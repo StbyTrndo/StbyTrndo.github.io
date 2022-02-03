@@ -5,7 +5,7 @@ main:
   - title: "Categories"
     url: /categories
   - title: "Recent"
-    url: /recent_posts
+    url: /recent-posts
   - title: "About"
     url: /about
   # - title: "About"
