@@ -25,7 +25,7 @@ feature_row:
     alt: "Recent Posts"
     title: "Recent Posts"
     excerpt: "View the most recent posts on this site."
-    url: "/recent_posts.html"
+    url: "/recent-posts"
     btn_label: "See Recent Posts"
     btn_class: "btn--primary"
 
