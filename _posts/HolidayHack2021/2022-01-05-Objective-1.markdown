@@ -1,0 +1,30 @@
+---
+title:  "Objective 1: KringleCon Orientation - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:01:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/opening_screen.png
+---
+
+This is the very start of the 2021 SANS Holiday Hack Challenge.
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+## The Objective
+
+We're immediately dropped into an area with a gate in front of us:
+
+![Opening Screen](/assets/images/HolidayHack2021/opening_screen.png)
+
+All we have to do is follow the instructions on screen.
+
+1. Click on Jingle Rickford to talk to him
+2. Keep talking to/clicking on Jingle to get your badge
+3. Click on the wifi adapter to walk over and pick it up
+
+![wifi adapter](/assets/images/HolidayHack2021/wifi_adapter.png)
+
+4. Click on Jingle to talk to him some more
+4. Click on the terminal next to Jingle to access it
+5. Click in the top of the window that pops up, type the word "answer", and hit the Enter key on your keyboard.
+6. Point and click or use the arrow keys to walk through the gate and into the Con!

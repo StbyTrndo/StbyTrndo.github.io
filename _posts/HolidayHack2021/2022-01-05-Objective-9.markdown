@@ -1,0 +1,223 @@
+---
+title:  "Objective 9: Splunk! - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:09:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/kringlecon_2021_pic.jpg
+---
+
+In this challenge, we're learning some threat hunting skills by trying to find security events in logs.
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+## Objective
+> Help Angel Candysalt solve the Splunk challenge in Santa's great hall. Fitzy Shortstack is in Santa's lobby, and he knows a few things about Splunk. What does Santa call you when when you complete the analysis?
+
+Clicking on the PC with the Splunk logo showing, we're taken to a Splunk web interface with a custom page containing some sample searches and giving us some tasks.
+
+## Task 1
+> Capture the commands Eddie ran most often, starting with git. Looking only at his process launches as reported by Sysmon, record the most common git-related CommandLine that Eddie seemed to use.
+
+Since we're only looking at process launches, let's start with this search from the Sample Splunk Searches: [Sysmon for Linux - Process creation](https://hhc21.bossworkshops.io/en-US/app/SA-hhc/search?q=search%20index%3Dmain%20sourcetype%3Djournald%20source%3DJournald%3AMicrosoft-Windows-Sysmon%2FOperational%20EventCode%3D1)
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1
+```
+
+Let's filter down to just Eddie's logs that contain "git" in the CommandLine:
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 User=eddie CommandLine=*git*
+```
+
+From here, we can either just click on "CommandLine" in the left-hand side panel to see the most popular commands, or add some extra to our query ( [Sysmon for Linux - Using Splunk stats and sort commands to find most/least common value of a field](https://hhc21.bossworkshops.io/en-US/app/SA-hhc/search?q=search%20index%3Dmain%20sourcetype%3Djournald%20source%3DJournald%3AMicrosoft-Windows-Sysmon%2FOperational%20EventCode%3D1%20user%3Deddie%20%0A%7C%20stats%20count%20by%20CommandLine%20%0A%7C%20sort%20-%20count), from above):
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 User=eddie CommandLine=*git*
+| stats count by CommandLine
+| sort by count desc
+```
+
+**Answer:** git status
+
+## Task 2
+> Looking through the git commands Eddie ran, determine the remote repository that he configured as the origin for the `partnerapi` repo. The correct one!
+
+Let's start with this query:
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 User=eddie CommandLine=*git*
+```
+
+Looking up the command for adding a remote repo ([Git Documentation](https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes)), we get this:
+
+```bash
+git remote add <shortname> <url>
+```
+
+Let's add the beginning of that command to our search:
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 User=eddie CommandLine="*git remote add*"
+```
+
+This narrows it down to two logs:
+
+- 11/23 @ 9:41: `git remote add origin https://github.com/elfnp3/partnerapi.git`
+- 11/23 @ 9:42: `git remote add origin git@github.com:elfnp3/partnerapi.git`
+
+If I had to guess, the second one would be the "correct" one, since that was the most recent one configured. Going back to our initial search of just `*git*` and looking through the logs chronologically shows that he added the https one, tried to push changes, and removed that as the origin before adding the ssh version of it.
+
+**Answer:** git@github.com:elfnp3/partnerapi.git
+
+## Task 3
+> The `partnerapi` project that Eddie worked on uses Docker. Gather the full docker command line that Eddie used to start the `partnerapi` project on his workstation.
+
+Let's change our CommandLine filter to look for `*docker*` instead of `*git*`
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 User=eddie CommandLine=*docker*
+```
+
+We can see that eddie added all the files to the git repo and then ran`docker compose up` to start it up ([docker compose up documentation](https://docs.docker.com/engine/reference/commandline/compose_up/)).
+
+**Answer:** docker compose up
+
+## Task 4
+> Eddie had been testing automated static application security testing (SAST) in GitHub. Vulnerability reports have been coming into Splunk in JSON format via GitHub webhooks. Search all the events in the main index in Splunk and use the sourcetype field to locate these reports. Determine the URL of the vulnerable GitHub repository that the elves cloned for testing and document it here. You will need to search outside of Splunk (try GitHub) for the original name of the repository.
+
+### Unintended Method
+In a previous question, we found the following URL: [https://github.com/elfnp3/partnerapi.git](https://github.com/elfnp3/partnerapi.git).
+
+Going there just gives us a 404 error, but going to [https://github.com/elfnp3/](https://github.com/elfnp3/) brings us to a user profile for the "North Pole Partner Program"
+
+They only have one repo, called "dvws-node", which claims to be an API (so it's the *Partner API*) and says it was forked from [snoopysecurity/dvws-node](https://github.com/snoopysecurity/dvws-node). 
+
+**Answer:** https://github.com/snoopysecurity/dvws-node
+
+### Inteded Method
+
+Starting with a really basic search to see all the sourcetypes in the main index:
+
+```
+index=main
+| stats count by sourcetype
+```
+
+We can see there is a sourcetype called "github_json". Let's add that to our search:
+
+```
+index=main sourcetype=github_json
+```
+
+**Note:** I found it helpful to switch to "List" view to look at these logs.
+
+Looking at the fields on the left, we can see that there are 3 different repository urls:
+- [https://api.github.com/repos/elfnp3/dvws-node](https://api.github.com/repos/elfnp3/dvws-node)
+- [https://github.com/elfnp3/partnerapi](https://github.com/elfnp3/partnerapi)
+- [https://github.com/elfnp3/dvws-node](https://github.com/elfnp3/partnerapi)
+
+Only one of these takes us to the page for an actual repo: [https://github.com/elfnp3/dvws-node](https://github.com/elfnp3/dvws-node)
+
+On this page, right beneath the repo name in the top left we can see that it was forked from [snoopysecurity/dvws-node](https://github.com/snoopysecurity/dvws-node)
+
+**Answer:** https://github.com/snoopysecurity/dvws-node
+
+## Task 5
+> Santa asked Eddie to add a JavaScript library from NPM to the 'partnerapi' project. Determine the name of the library and record it here for our workshop documentation.
+
+The command to install a package from NPM is `npm install <package_name>` (from [NPM Docs](https://docs.npmjs.com/downloading-and-installing-packages-locally)), so let's go back to our search from Task 3 and change it to search for that command instead:
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 User=eddie CommandLine="*npm install*"
+```
+
+Looks like Eddie installed holiday-utils-js.
+
+**Answer:** holiday-utils-js
+
+## Task 6
+> Another elf started gathering a baseline of the network activity that Eddie generated. Start with [their search](https://hhc21.bossworkshops.io/en-US/app/SA-hhc/search?q=search%20index%3Dmain%20sourcetype%3Djournald%20source%3DJournald%3AMicrosoft-Windows-Sysmon%2FOperational%20EventCode%3D3%20user%3Deddie%20NOT%20dest_ip%20IN%20(127.0.0.*)%20NOT%20dest_port%20IN%20(22%2C53%2C80%2C443)%20%0A%7C%20stats%20count%20by%20dest_ip%20dest_port&display.page.search.mode=smart&dispatch.sample_ratio=1&workload_pool=&earliest=0&latest=now) and capture the full process_name field of anything that looks suspicious.
+
+Here's the starting search:
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=3 user=eddie NOT dest_ip IN (127.0.0.*) NOT dest_port IN (22,53,80,443) 
+| stats count by dest_ip dest_port
+```
+
+There are two IPs and ports listed here:
+
+|dest_ip|dest_port|
+|---|---|
+|192.30.255.113|9418|
+|54.175.69.219|16842|
+
+Chopping the second line (starting with `|stats`) off of that search gets us back to the full logs. In the left-hand side panel, we can see there's a field called "process_name" that has two values:
+- `/usr/bin/git`
+- `/usr/bin/nc.openbsd`
+
+We know this user typically uses git a lot for legitimate purposes, so we can be less concerned about that. On the other hand, `nc` is short for "netcat", which is designed to make outbound connections and is something that can be abused by threat actors.
+
+**Answer:** /usr/bin/nc.openbsd
+
+## Task 7
+> Uh oh. This documentation exercise just turned into an investigation. Starting with the process identified in the previous task, look for additional suspicious commands launched by the same parent process. One thing to know about these Sysmon events is that Network connection events don't indicate the parent process ID, but Process creation events do! Determine the number of files that were accessed by a related process and record it here.
+
+First we need to see what process ID created this network connection.
+
+Let's add the suspicious process name to our search from the previous section:
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=3 user=eddie NOT dest_ip IN (127.0.0.*) NOT dest_port IN (22,53,80,443) process_name="/usr/bin/nc.openbsd"
+```
+
+we can see in the left-hand side panel that there are two process ID fields. One reports the process ID as 6791 and the other reports it as 686. Let's keep those in mind.
+
+Moving back to the Sysmon logs now, we'll start with the basic search:
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1
+```
+
+There are two process ID fields in these logs as well: `ProcessID` and `process_id`.
+
+ProcessID contains only two values: 686 and 1527. 686 has 300+ logs associated with it. Looks like we shouldn't be using this one. So let's try adding `process_id=6791` to our search:
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 process_id=6791
+```
+
+From here, we can see the parent process to 6791 is 6788 (by checking out the parent_process_id field in the left-hand sidebar). Let's alter our query to search for that parent process ID instead:
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 parent_process_id=6788
+```
+
+There are two logs here, one is for the nc.openbsd process and another is for a "cat" process.
+
+Swapping over to table view, we can see that the CommandLine for the cat process was:
+```bash
+cat /home/eddie/.aws/credentials /home/eddie/.ssh/authorized_keys /home/eddie/.ssh/config /home/eddie/.ssh/eddie /home/eddie/.ssh/eddie.pub /home/eddie/.ssh/known_hosts
+```
+
+Looks like whoever used this command was looking to find some ssh configuration information.
+
+**Answer:** 6
+
+## Task 8
+> Use Splunk and Sysmon Process creation data to identify the name of the Bash script that accessed sensitive files and (likely) transmitted them to a remote IP address.
+
+Let's check out that parent process from the previous task.
+
+```
+index=main sourcetype=journald source=Journald:Microsoft-Windows-Sysmon/Operational EventCode=1 process_id=6788
+```
+
+Ok, so it's bash. What's the parent process of this bash session?
+
+Looking on the left-hand side panel again, we can see the parent_process field, which lets us know that the parent process was `/bin/bash preinstall.sh`
+
+**Answer:** preinstall.sh
+
+## Finishing up
+
+Entering the last answer in the to-do list brings up a pop-up calling us a "whiz"
+
+**Answer:** whiz

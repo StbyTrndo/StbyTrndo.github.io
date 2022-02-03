@@ -1,0 +1,491 @@
+---
+title:  "Objective 6: Shellcode Primer - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:06:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/kringlecon_2021_pic.jpg
+---
+
+In this challenge, we learn how to write shellcode, a very close-to-the-processor programming language.
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+
+## Objective
+> Complete the [Shellcode Primer](https://tracer.kringlecastle.com/) in Jack's office. According to the last challenge, what is the secret to KringleCon success? "All of our speakers and organizers, providing the gift of \_\_\_\_, free to the community."
+
+We're directed to https://tracer.kringlecastle.com, where we're greeted with an introduction to the objective. Here is what the page says:
+
+> ## Welcome to Shellcode Primer!
+> 
+> This is a training program conceived by Jack Frost (yes, THE Jack Frost) to train trolls how to build exploit code, from the ground up. This will teach how to write working x64 shellcode to read a file and print it to standard output!
+> 
+> If you're new to this, we recommend reading this introduction thoroughly!
+> 
+> ### Introduction
+> 
+> In this challenge, you will be hand-crafting increasingly complex shellcode, written in x64. If that sounds scary, don't fret! We will guide you step by step!
+> 
+> Choose your challenge on the left (Introduction will be open by default), read the instructions on the top, and start writing code! We'll provide the basic structure of the code to help make sure you're heading in the right direction.
+> 
+> ### What is Shellcode?
+> 
+> Shellcode is small, position-independent assembly code that is typically executed as the payload of an exploit. For the initial challenges, you'll write code and see what it does - no exploit required.
+> 
+> The important thing about shellcode is that it doesn't typically have access to libraries or functions that you might be accustomed to; it needs to be entirely self-contained! Even normally simple things like defining a string or opening a file can be tricky. We'll cover those things as they come up!
+> 
+> ### Using Shellcode Primer
+> 
+> As you type code, it will be assembled in the background. Assembling takes the assembly code you write and translates it into machine code (which is represented as a series of hex characters). We use the metasm Ruby library to assemble, in case you want to work on your code locally:
+
+```ruby
+require 'metasm'
+assembled = Metasm::Shellcode.assemble(Metasm::X86_64.new, payload['code']).encode_string.unpack('H*').pop()
+```   
+
+> When your code successfully assembles, you can execute it by clicking the Execute button at the bottom. That'll run the code in a virtual machine, and instrument each step so you can see exactly what's going on!
+> 
+> #### Good Luck!
+
+
+## 1. Introduction
+There is no code editing for this step. Just teaching how shellcode works and how the interface works.
+
+#### Code
+```nesasm
+; Set up some registers (sorta like variables) with values
+; In the debugger, look how these change!
+mov rax, 0
+mov rbx, 1
+mov rcx, 2
+mov rdx, 3
+mov rsi, 4
+mov rdi, 5
+mov rbp, 6
+
+; Push and pop - watch how the stack changes!
+push 0x12345678
+pop rax
+
+push 0x1111
+push 0x2222
+push 0x3333
+pop rax
+pop rax
+pop rax
+
+; This creates a string and references it in rax - watch the debugger!
+call getstring
+  db "Hello World!",0
+getstring:
+pop rax
+
+; Finally, return 0x1337
+mov rax, 0x1337
+ret
+```
+
+## 2. Loops
+There is no code editing for this step either.
+
+#### Code
+```nesasm
+; We want to loop 5 times - you can change this if you want!
+mov rax, 5
+
+; Top of the loop
+top:
+  ; Decrement rax
+  dec rax
+
+  ; Jump back to the top until rax is zero
+  jnz top
+
+; Cleanly return after the loop
+ret
+```
+
+## 3. Getting Started
+#### Objective
+>This level currently fails to build because it has no code. Can you add a 'ret'urn statement at the end? Don't worry about what it's actually returning (yet!)
+
+#### Pre-Loaded Code
+```nesasm
+; This is a comment! We'll use comments to help guide your journey.
+; Right now, we just need to RETurn!
+;
+; Enter a return statement below and hit Execute to see what happens!
+```
+
+#### Code
+All we have to do is add `ret` to the end of the file.
+```nesasm
+; This is a comment! We'll use comments to help guide your journey.
+; Right now, we just need to RETurn!
+;
+; Enter a return statement below and hit Execute to see what happens!
+ret
+```
+
+## 4. Returning a Value
+#### Objective
+>For this level, can you return the number '1337' from your function?
+>
+>That means that 'rax' must equal '1337' when the function returns.
+
+#### Pre-Loaded Code
+```nesasm
+; TODO: Set rax to 1337
+
+
+; Return, just like we did last time
+ret
+```
+
+#### Code
+All we have to do is add `move rax, 1337` between the two comments.
+
+```nesasm
+; TODO: Set rax to 1337
+
+move rax, 1337
+
+; Return, just like we did last time
+ret
+```
+
+
+## 5. System Calls
+#### Objective
+>For this challenge, we're going to call 'sys_exit' to exit the process with exit code 99.
+>
+>Can you prepare 'rax' and 'rdi' with the correct values to exit?
+
+#### Pre-Loaded Code
+```nesasm
+; TODO: Find the syscall number for sys_exit and put it in rax
+
+; TODO: Put the exit_code we want (99) in rdi
+
+; Perform the actual syscall
+syscall
+```
+
+#### Code
+We're also given this link to the list of linux syscalls: https://blog.rchapman.org/posts/Linux_System_Call_Table_for_x86_64/
+
+Searching through that page, we can see that the number for the `sys_exit` syscall is 60 and that we can specify the error code by loading it into `rdi`.
+
+```nesasm
+;Put the number for syscall sys_exit into rax
+mov rax, 60
+
+;Put the exit_code we want (99) in rdi
+mov rdi, 99
+
+
+; Perform the actual syscall
+syscall
+```
+
+## 6. Calling Into the Void
+Nothing to edit here. This demonstrates what happens when code crashes.
+
+#### Code
+```nesasm
+; Push this value to the stack
+push 0x12345678
+
+; Try to return
+ret
+```
+
+## 7. Getting RIP
+#### Objective
+>For this exercise, can you 'pop' the address after the call - the _No Op_ ('nop') instruction - into 'rax' then return?
+
+#### Pre-Loaded Code
+```nesasm
+; Remember, this call pushes the return address to the stack
+call place_below_the_nop
+
+; This is where the function *thinks* it is supposed to return
+nop
+
+; This is a 'label' - as far as the call knows, this is the start of a function
+place_below_the_nop:
+
+; TODO: Pop the top of the stack into rax
+
+
+; Return from our code, as in previous levels
+ret
+```
+
+#### Code
+All we need to do is `pop` the top of the stack into `rax` where it tells us to.
+
+```nesasm
+; Remember, this call pushes the return address to the stack
+call place_below_the_nop
+
+; This is where the function *thinks* it is supposed to return
+nop
+
+; This is a 'label' - as far as the call knows, this is the start of a function
+place_below_the_nop:
+
+; Pop the top of the stack into rax
+pop rax
+
+; Return from our code, as in previous levels
+ret
+```
+
+## 8. Hello, World!
+#### Objective
+>For this next exercise, we include a plaintext string - 'Hello World' - as part of the code. It's just sitting there in memory. If you look at the compiled code, it's all basically 'Hello World', which doesn't run.
+>
+>Instead of trying to run it, can you 'call' past it, and 'pop' its address into 'rax'?
+>
+>Don't forget to check the debugger after to see it in 'rax'!
+
+#### Pre-Loaded Code
+```nesasm
+; This would be a good place for a call
+
+; This is the literal string 'Hello World', null terminated, as code. Except
+; it'll crash if it actually tries to run, so we'd better jump over it!
+db 'Hello World',0
+
+; This would be a good place for a label and a pop
+
+; This would be a good place for a re... oh wait, it's already here. Hooray!
+ret
+```
+
+#### Code
+What we have to do is call a function right before the data we want to grab, then have the function grab the pointer to the data off the stack and return it. The sample code in the introduction section has an example of this.
+
+```nesasm
+; This would be a good place for a call
+call func
+; This is the literal string 'Hello World', null terminated, as code. Except
+; it'll crash if it actually tries to run, so we'd better jump over it!
+db 'Hello World',0
+
+; This would be a good place for a label and a pop
+func:
+pop rax
+
+; This would be a good place for a re... oh wait, it's already here. Hooray!
+ret
+```
+
+## 9. Hello, World!!
+#### Objective
+> This time, instead of getting a pointer to the string 'Hello World', we're going to print it to standard output (stdout).
+> 
+> Have another look [at the syscall table](https://blog.rchapman.org/posts/Linux_System_Call_Table_for_x86_64/). Can you find 'sys_write', and use to to print the string 'Hello World!' to stdout?
+> 
+>Note: stdout's file descriptor is 1.
+
+#### Pre-Loaded Code
+```nesasm
+; TODO: Get a reference to this string into the correct register
+
+db 'Hello World!',0
+
+; Set up a call to sys_write
+; TODO: Set rax to the correct syscall number for sys_write
+
+
+; TODO: Set rdi to the first argument (the file descriptor, 1)
+
+
+; TODO: Set rsi to the second argument (buf - this is the "Hello World" string)
+
+
+; TODO: Set rdx to the third argument (length of the string, in bytes)
+
+
+; Perform the syscall
+syscall
+
+; Return cleanly
+ret
+```
+
+#### Code
+Here's the entry for `sys_write`:
+
+|%rax|System Call|%rdi|%rsi|%rdx|
+|---|---|---|---|---|
+|1|sys_write|unsigned int fd|const char \*buf|size_t count|
+
+So we have to combine our answer from the last section with a syscall.
+
+Syscall parameters:
+- `rax` should be set to 1, the ID of sys_write
+- `rdi` should be set to 1, the file descriptor for stdout
+- `rsi` should be set to a pointer to the 'Hello World!' string
+- `rdx` should be set to 12, the number of bytes in that string
+
+**Note:** In this case, the number of bytes in that string is equal to the number of characters, but this is not always the case when dealing with some special characters. Here's [a resource for checking the byte length of a string](https://mothereff.in/byte-counter). 
+
+```nesasm
+; Write this string to stdout
+call write_out
+    db 'Hello World!',0
+
+write_out:
+; Set up a call to sys_write
+mov rax, 1
+mov rdi, 1
+pop rsi
+mov rdx, 12
+; Perform the syscall
+syscall
+
+; Return cleanly
+ret
+```
+
+# 10. Opening a File
+#### Objective
+>Can you use the sys_open' syscall to open '/etc/passwd', then return the file handle (in rax)?
+>
+>Have another look [at the syscall table](https://blog.rchapman.org/posts/Linux_System_Call_Table_for_x86_64/). Can you call 'sys_open' on the file ''/etc/passwd', then return the file handle?
+
+#### Pre-Loaded Code
+```nesasm
+; TODO: Get a reference to this string into the correct register
+db '/etc/passwd',0
+
+; Set up a call to sys_open
+; TODO: Set rax to the correct syscall number
+
+; TODO: Set rdi to the first argument (the filename)
+
+; TODO: Set rsi to the second argument (flags - 0 is fine)
+
+; TODO: Set rdx to the third argument (mode - 0 is also fine)
+
+; Perform the syscall
+syscall
+
+; syscall sets rax to the file handle, so to return the file handle we don't
+; need to do anything else!
+ret
+```
+
+#### Code
+Here is the entry for `sys_open`:
+
+|%rax|System Call|%rdi|%rsi|%rdx|
+|---|---|---|---|---|
+|2|sys_open|const char \*filename|int flags|int mode|
+
+Syscall parameters:
+- `rax` should be set to 2, the ID of sys_open
+- `rdi` should be set to a pointer to the filename, `/etc/passwd`
+- `rsi` should be set to 0, according to the comments in the existing code
+- `rdx` should be set to 0, according to the comments in the existing code
+
+```nesasm
+; Get the file handle
+call get_file_handle
+    db '/etc/passwd',0
+
+get_file_handle:
+; Set up a call to sys_open
+;Set rax to the correct syscall number
+mov rax, 2
+; TODO: Set rdi to the first argument (the filename)
+pop rdi
+; Set rsi to the second argument (flags - 0 is fine)
+mov rsi, 0
+; Set rdx to the third argument (mode - 0 is also fine)
+mov rdx, 0
+; Perform the syscall
+syscall
+
+; syscall sets rax to the file handle, so to return the file handle we don't need to do anything else!
+ret
+```
+
+## 11. Reading a File
+#### Objective
+>For this exercise, we're going to read a specific file… let's say, ''/var/northpolesecrets.txt'… and write it to stdout. No reason for the name, but since this is Jack Frost's troll-trainer, it might be related to a top-secret mission!
+>First up, just like last exercise, call 'sys_open'. This time, be sure to open '/var/northpolesecrets.txt'.
+>
+>Second, find the 'sys_read' entry on [the syscall table](https://blog.rchapman.org/posts/Linux_System_Call_Table_for_x86_64/), and set up the call. Some tips:
+>
+>1.  The file descriptor is returned by 'sys_open'
+>2.  The buffer for reading the file can be any writeable memory - 'rsp' is a great option, temporary storage is what the stack is meant for
+>3.  You can experiment to find the right 'count', but if it's a bit too high, that's perfectly fine
+>
+>Third, find the 'sys_write' entry, and use it to write to stdout. Some tips on that:
+>
+>1.  The file descriptor for stdout is always 1
+>2.  The best value for 'count' is the return value from 'sys_read', but you can experiment with that as well (if it's too long, you might get some garbage after; that's okay!)
+>
+>Finally, if you use 'rsp' as a buffer, you won't be able to 'ret' - you're going to overwrite the return address and 'ret' will crash. That's okay! You remember how to 'sys_exit', right? :)
+
+#### Pre-Loaded Code
+```nesasm
+; TODO: Get a reference to this
+db '/var/northpolesecrets.txt',0
+
+; TODO: Call sys_open
+
+; TODO: Call sys_read on the file handle and read it into rsp
+
+; TODO: Call sys_write to write the contents from rsp to stdout (1)
+
+; TODO: Call sys_exit
+```
+
+#### Code
+This is just a combination of everything we've learned so far.
+
+```nesasm
+; Get a reference to this
+call get_ref
+    db '/var/northpolesecrets.txt',0
+
+get_ref:
+pop rdi ; sets rdi to a pointer to the filename
+
+; Call sys_open
+mov rax, 2 ; the id for sys_open
+; get_ref will already set rdi to a pointer to the filename
+mov rsi, 0 ; no flags necessary
+mov rdx, 0 ; mode 0 is fine
+syscall ; this will set rax to the file handle
+
+; Call sys_read on the file handle and read it into rsp
+mov rdi, rax
+mov rax, 0
+mov rsi, rsp
+mov rdx, 136 ;after playing with the length and looking at the debugger, this is the correct byte length
+syscall ; this puts a pointer to our data into rsp (and thus rsi as well)
+
+; Call sys_write to write the contents from rsp to stdout (1)
+mov rax, 1 ; the id for sys_write
+mov rdi, 1 ; the fd for stdout
+; rsi is already set to the correct pointer
+; rdx is already set to the correct length this was already set correctly, but just confirming
+syscall ; this prints the contents of the file to the screen
+
+; Call sys_exit
+mov rax, 60
+mov rdi, 0
+syscall
+```
+
+This outputs "Secret to KringleCon success: all of our speakers and organizers, providing the gift of cyber security knowledge, free to the community."
+
+**Answer:** cyber security knowledge
+
+You can also visit https://tracer.kringlecastle.com/?cheat to see the intended solutions

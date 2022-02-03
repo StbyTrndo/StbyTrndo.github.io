@@ -1,0 +1,102 @@
+---
+title:  "Objective 2: Where in the World is Caramel Santaigo? - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:02:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/Caramel_Sanitago.png
+---
+
+In this challenge we use some Open-Source Intelligence (OSINT) skills to follow the tracks of one of the elves around the world.
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+## Objective
+>Help Tangle Coalbox find a wayward elf in Santa's courtyard.
+
+Apparently some elves have gone on trips around the globe and we need to track them down. There are two things we need to determine here:
+1. Where did the elf go?
+2. Which elf is it?
+
+## Startup
+When we click on the terminal, it opens a window that we can use our mouse to interact with. After clicking "Start Game!", we're shown this screen:
+
+![Startup Screen](/assets/images/HolidayHack2021/Caramel_Sanitago.png)
+
+We're given a few options:
+1. Investigate
+	- This is where we get hints to where the elf might be.
+	- We'll immediately list these out each time we get to a new location.
+2. Visit InterRink
+	- Here we can input facts we know about the elf to help determine which elf it is.
+3. Depart by sleigh
+	- Once we know where to go, we can use this to go to the next location and get the next set of hints.
+
+**Note:** Each time you do this challenge, it is a bit different, so you may not get the exact same set of hints and locations that I did. However, the same principles apply.
+
+## Santa's Castle
+We start the journey at Santa's Castle.
+
+**Investigate Hints:**
+- They said, if asked, they would describe their next location in three words as "frozen, push, and tamed."
+- They were checking the Ofcom frequency table to see what amateur frequencies they could use while there.
+- They were dressed for 8.0°C and partly cloudy conditions. They kept checking their Twitter app.
+
+We can add Twitter as the "preferred social medium" in InterRink. Hitting "Filter Elves" shows us that only three elves prefer Twitter:
+-   Sparkle Redberry
+-   Fitzy Shortstack
+-   Eve Snowshoes
+
+"frozen, push, and tamed" sounds like a what3words location to me (what3words was a hint given by the elf after the Document Analysis challenge). And as it turns out, it is: https://what3words.com/frozen.push.tamed
+
+This points to London, England.
+
+Another meaningful clue I can see here is the word "Ofcom". A quick google of the word shows us that Ofcom is the UK's Office of Communications.
+
+**Next Destination:** London, England
+
+## London
+**Investigate Hints:**
+- They said, if asked, they would describe their next location as "staring desire frost."
+- Having trouble typing that letter? It's UNICODE 00ED or 0237 on the number pad in Windows.
+- They were dressed for 1.0°C and heavy snow conditions. The elf got really heated about using spaces for indents.
+
+This doesn't really make it clear if they prefer tabs or spaces, so we can't be too sure there.
+
+"staring desire frost" sounds like another what3words location. It points to Reykjavík, Iceland: https://what3words.com/staring.desire.frost
+
+Also, [UNICODE 00ED](https://unicode-table.com/en/00ED/) is "í", which is described as "Latin Small Letter I with Acute."
+
+According to [Wikipedia](https://en.wikipedia.org/wiki/%C3%8D):
+>í ([i](https://en.wikipedia.org/wiki/I "I")-[acute](https://en.wikipedia.org/wiki/Acute_accent "Acute accent")) is a letter in the [Faroese](https://en.wikipedia.org/wiki/Faroese_language "Faroese language"), [Hungarian](https://en.wikipedia.org/wiki/Hungarian_language "Hungarian language"), [Icelandic](https://en.wikipedia.org/wiki/Icelandic_language "Icelandic language"), [Czech](https://en.wikipedia.org/wiki/Czech_language "Czech language"), [Slovak](https://en.wikipedia.org/wiki/Slovak_language "Slovak language"), and [Tatar languages](https://en.wikipedia.org/wiki/Tatar_language "Tatar language"), where it often indicates a long /i/ vowel (_ee_ in English word _feel_). This form also appears in [Catalan](https://en.wikipedia.org/wiki/Catalan_language "Catalan language"), [Irish](https://en.wikipedia.org/wiki/Irish_language "Irish language"), [Italian](https://en.wikipedia.org/wiki/Italian_language "Italian language"), [Occitan](https://en.wikipedia.org/wiki/Occitan_language "Occitan language"), [Portuguese](https://en.wikipedia.org/wiki/Portuguese_language "Portuguese language"), [Spanish](https://en.wikipedia.org/wiki/Spanish_language "Spanish language"), [Aragonese](https://en.wikipedia.org/wiki/Aragonese_language "Aragonese language"), [Galician](https://en.wikipedia.org/wiki/Galician_language "Galician language"), [Leonese](https://en.wikipedia.org/wiki/Leonese_language "Leonese language"), [Navajo](https://en.wikipedia.org/wiki/Navajo_language "Navajo language"), and [Vietnamese language](https://en.wikipedia.org/wiki/Vietnamese_language "Vietnamese language") as a variant of the letter “i”. In [Latin](https://en.wikipedia.org/wiki/Latin "Latin"), the [long i](https://en.wikipedia.org/wiki/Long_i "Long i") ⟨ꟾ⟩ is used instead of ⟨í⟩ for a long i-vowel.
+
+So that's another point for Iceland. Bonus points because Reykjavík actually has that character in its name.
+
+**Next Location:** Reykjavík, Iceland
+
+## Reykjavík
+**Investigate Hints:**
+- They said something about MGRS 32U NU 05939 98268...
+- Apparently they really wanted to see what a town hall looks like when it's converted into a giant Advent calendar!
+- They were dressed for 1.0°C and partly cloudy conditions. Oh, I noticed they had a Doctor Who themed phone case.
+
+Ok, so they're a doctor Who fan. Entering that into InterRink tells us that we're dealing with Eve Snowshoes for sure.
+
+MGRS stands for [Military Grid Reference System](https://en.wikipedia.org/wiki/Military_Grid_Reference_System), which is "the geocoordinate standard used by [NATO](https://en.wikipedia.org/wiki/NATO "NATO") militaries for locating points on Earth". (MGRS was the other hint given by the elf after the Document Analysis challenge)
+
+The MGRS coordinate is: 32U NU 05939 98268
+
+A quick google search brings up this site: https://mappingsupport.com/p2/coordinates-mgrs-gissurfer-maps.html
+
+The site is kind of hard to use, but it works.
+
+32U is pretty much all Germany. NU points us to the south of Germany. The 0 and 9 in the last two groupings point us roughtly towards Stuttgart, Germany.
+
+Some additional googling about Stuttgart and an advent calendar in the town hall seems to confirm this suspicion: https://www.alamy.com/stuttgart-germany-december-19-2010-advent-calendar-in-the-town-hall-windows-image338142539.html
+
+**Next Destination:** Stuttgart, Germany
+
+## Stuttgart, Germany
+**Investigate Hints:**
+All of the investigate steps say "You just missed the Elf!" After checking all of the Investigation hints, we're asked to name the elf.
+
+**Answer:**  Eve Snowshoes

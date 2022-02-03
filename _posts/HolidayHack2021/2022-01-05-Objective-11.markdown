@@ -1,0 +1,37 @@
+---
+title:  "Objective 11: Customer Complaint Analysis - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:11:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/wireshark_1.png
+---
+
+## Objective
+> A human has accessed the Jack Frost Tower network with a non-compliant host. [Which three trolls complained about the human](https://downloads.holidayhackchallenge.com/2021/jackfrosttower-network.zip)? Enter the troll names in alphabetical order separated by spaces.
+
+## Analysis
+That link is a link to a zip file with a packet capture (pcap) inside of it.
+
+Let's analyze it using [Wireshark](https://www.wireshark.org/)
+
+![Wireshark Screenshot](/assets/images/HolidayHack2021/wireshark_1.png)
+
+A lot of the traffic here is just TCP Keep-Alive traffic or simple traffic establishing connections and whatnot. They all have length 66, so let's just filter those out. Right-click on a 66 and select "Apply as Filter" > "Not Selected" (or you could add `!(frame.len == 66)` as a filter).
+
+![Wireshark Screenshot](/assets/images/HolidayHack2021/wireshark_2.png)
+
+
+This cuts things down to a much more reasonable amount of data. A quick skim through these shows a bunch of POST requests to `/feedback/guest_complaint.php`. This seems like what we want.
+
+Clicking on one of these lines and opening the `HTML Form URL Encoded` section in the middle panel shows us the data posted in the form, including the person's name, guest info, and the complaint text.
+
+Let's change our filter to show just these POST requests to this URL. If we expand the "Hypertext Transfer Protocol" section in the middle panel, we can right click on `POST /feedback/guest_comtplaint...` and select "Apply as Filter" > "Selected" to get just these requests.
+
+Looking through these, they're all complaints *about* the guests, not *from* the guests... except for one from "Muffy VonDuchess Sebastian". The post says that their room number is 1024.
+
+Looking at the other complaints, 3 of them are about the guest in room 1024 (a.k.a. Muffy). Here are the trolls who posted them:
+- Yaqh
+- Hagg
+- Flud
+
+**Answer:** Flud Hagg Yaqh

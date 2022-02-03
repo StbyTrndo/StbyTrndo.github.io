@@ -107,3 +107,5 @@ footer:
     - label: "Disclaimer"
       icon: "fab fa fa-book"
       url: "/disclaimer"
+
+include: ["_pages"]
