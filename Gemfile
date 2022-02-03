@@ -32,5 +32,8 @@ gem "wdm", "~> 0.1.1", :platforms => [:mingw, :x64_mingw, :mswin]
 #////////////////////////////
 #CUSTOM
 #///////////////////////////
-gem "minimal-mistakes-jekyll" # use the minimal-mistakes theme instead of the default minima theme
+
+source "https://rubygems.org"
+
 gem "github-pages", group: :jekyll_plugins
+gem "jekyll-include-cache", group: :jekyll_plugins

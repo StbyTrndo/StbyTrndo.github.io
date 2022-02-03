@@ -29,10 +29,11 @@ baseurl: ""     # place folder name if the site is served in a subfolder
 github_username:  StbyTrndo
 
 # Build settings
-theme: minimal-mistakes-jekyll
+# theme: minima
 
 plugins:
   - jekyll-feed
+  - jekyll-include-cache #custom for minimal mistakes
 
 # Exclude from processing.
 # The following items will not be processed, by default.
@@ -59,6 +60,7 @@ plugins:
 # CUSTOM ITEMS
 ###########################
 
+remote_theme: "mmistakes/minimal-mistakes@4.24.0" 
 timezone: America/Los_Angeles
 permalink: /:categories/:title/
 
