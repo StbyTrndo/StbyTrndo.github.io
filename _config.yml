@@ -102,6 +102,9 @@ author:
     - label: "Hack The Box"
       icon: "fas fa-cube"
       url: "https://app.hackthebox.com/profile/602021"
+    - label: "Email"
+      icon: "fas fa-envelope"
+      url: "mailto:nate@strawberrysec.net"
 
 footer:
   links:
