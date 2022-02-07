@@ -14,7 +14,7 @@ hero_row:
     alt: "Hero Post"
     title: "2021 SANS Holiday Hack Challenge"
     excerpt: "A collection of all of the posts I made about the 2021 SANS Holiday Hack Challenge"
-    url: "/categories/HolidayHack2021"
+    url: "/holidayhack2021/Summary/"
     btn_label: "Read More"
     btn_class: "btn--primary"
 

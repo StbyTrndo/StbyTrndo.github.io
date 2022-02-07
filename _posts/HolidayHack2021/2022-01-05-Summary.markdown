@@ -1,0 +1,39 @@
+---
+title:  "Summary - 2021 SANS Holiday Hack Challenge"
+date:   "2022-01-05 00:14:00 -0800"
+categories: HolidayHack2021
+header:
+ teaser: /assets/images/HolidayHack2021/kringlecon_2021_pic.jpg
+---
+
+This year I completed the [SANS Holiday Hack Challenge](https://2021.kringlecon.com/invite). I'll admit that it took a lot more time and looking through the [Discord](https://discord.gg/Wbmx92rWW3) than it likely took for some of the more seasoned veterans, but I did make it through all of the objectives in time to submit a write-up. I've posted all of my notes here as a guide so that anyone who gets stuck trying out the challenge for themselves doesn't have to spend hours running down dead ends like I did.
+
+Despite the fact that my wall might have a few more head-shaped dents in it than before, I really did enjoy the challenge and perservering through the obstacles I faced was very rewarding. A huge thank you goes out to SANS and the entire team for putting on this event every year and making it free for the entire community!
+
+*__Note:__ I did skip a few of the terminal challenges in spots where I felt comfortable attempting the associated objective without the extra hints, so there are a few missing from the list below. That said, they're not critical for completing the objectives, so anyone following along should be able to complete the challenge anyways.* 
+
+## Objectives
+- [Objective 1: KringleCon Orientation](/holidayhack2021/Objective-1/)
+- [Objective 2: Where in the World is Caramel Santaigo?](/holidayhack2021/Objective-2/)
+- [Objective 3: Thaw Frost Tower's Entrance](/holidayhack2021/Objective-3/)
+- [Objective 4: Slot Machine Investigation](/holidayhack2021/Objective-4/)
+- [Objective 5: Strange USB Device](/holidayhack2021/Objective-5/)
+- [Objective 6: Shellcode Primer](/holidayhack2021/Objective-6/)
+- [Objective 7: Printer Exploitation](/holidayhack2021/Objective-7/)
+- [Objective 8: Kerberoasting on an Open Fire](/holidayhack2021/Objective-8/)
+- [Objective 9: Splunk!](/holidayhack2021/Objective-9/)
+- [Objective 10: Now Hiring!](/holidayhack2021/Objective-10/)
+- [Objective 11: Customer Complaint Analysis](/holidayhack2021/Objective-11/)
+- [Objective 12: KringleCon Orientation](/holidayhack2021/Objective-12/)
+- [Objective 13: FPGA Programming](/holidayhack2021/Objective-13/)
+
+## Terminal Challenges
+- [Document Analysis](/holidayhack2021/Document-Analysis-Challenge/)
+- [Frostavator](/holidayhack2021/Frostavator-Challenge/)
+- [Grepping for Gold](/holidayhack2021/Grepping-For-Gold-Challenge/)
+- [Hoho ... No](/holidayhack2021/HoHo-No-Challenge/)
+- [Holiday Hero](/holidayhack2021/Holiday-Hero-Challenge/)
+- [IMDS Exploration Challenge](/holidayhack2021/IMDS-Exploration-Challenge/)
+- [IPv6 Sandbox](/holidayhack2021/IPv6-Sandbox-Challenge/)
+- [Logic Chompers](/holidayhack2021/Logic-Chompers-Challenge/)
+- [The Elf Code](/holidayhack2021/Elf-Code-Challenge/)
