@@ -4,7 +4,6 @@ date:   "2022-01-05 00:07:00 -0800"
 categories: HolidayHack2021
 header:
  teaser: /assets/images/HolidayHack2021/printer_site.png
- image: /assets/images/HolidayHack2021/printer_site.png
 ---
 
 We're building some more penetration testing skills in this challenge. 
