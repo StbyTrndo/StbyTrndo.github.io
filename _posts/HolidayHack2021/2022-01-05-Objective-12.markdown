@@ -1,5 +1,5 @@
 ---
-title:  "Objective 12: KringleCon Orientation - 2021 SANS Holiday Hack Challenge"
+title:  "Objective 12: Frost Tower Website Checkup - 2021 SANS Holiday Hack Challenge"
 date:   "2022-01-05 00:12:00 -0800"
 categories: HolidayHack2021
 header:

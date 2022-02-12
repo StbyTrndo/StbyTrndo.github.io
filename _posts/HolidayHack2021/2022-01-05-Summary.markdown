@@ -24,7 +24,7 @@ Despite the fact that my wall might have a few more head-shaped dents in it than
 - [Objective 9: Splunk!](/holidayhack2021/Objective-9/)
 - [Objective 10: Now Hiring!](/holidayhack2021/Objective-10/)
 - [Objective 11: Customer Complaint Analysis](/holidayhack2021/Objective-11/)
-- [Objective 12: KringleCon Orientation](/holidayhack2021/Objective-12/)
+- [Objective 12: Frost Tower Website Checkup](/holidayhack2021/Objective-12/)
 - [Objective 13: FPGA Programming](/holidayhack2021/Objective-13/)
 
 ## Terminal Challenges
