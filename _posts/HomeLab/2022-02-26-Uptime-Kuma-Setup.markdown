@@ -3,7 +3,7 @@ title:  "Uptime Kuma Setup"
 date:   "2022-02-26 00:00:00 -0800"
 categories: HomeLab
 header:
- teaser: /assets/images/Homelab/Uptime_Kuma_Header.png
+ teaser: /assets/images/HomeLab/Uptime_Kuma_Header.png
 ---
 
 Uptime Kuma is an open-source, self-hosted app that keeps track of the status of various services and notifies you if something goes down. It's really sleek-looking and is super easy to use.
