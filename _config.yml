@@ -74,7 +74,7 @@ logo: /assets/images/strawberry_logo_88x88.png
 title_separator: "|"
 search: true
 og_image: /assets/images/strawberry_logo.png #open graph default image
-teaser: /assets/images/default_teaser.jpg #default teaser. Set a custom teaser in the header.
+teaser: /assets/images/strawberry_background_1920_1080.png #default teaser. Set a custom teaser in the header.
 
 defaults:
   # _posts

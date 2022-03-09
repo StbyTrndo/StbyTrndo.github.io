@@ -5,7 +5,7 @@ date: 2016-03-23T11:48:41-04:00
 header:
   overlay_color: "#000"
   overlay_filter: "0.8"
-  overlay_image: /assets/images/default_teaser.jpg
+  overlay_image: /assets/images/strawberry_background_1920_1080.png
 excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in general. Join me on my dive into the technical side of computing!"
 
 
