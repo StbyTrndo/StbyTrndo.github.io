@@ -5,7 +5,7 @@ permalink: /disclaimer/
 ---
 
 
-If you require any more information or have any questions about our site's disclaimer, please feel free to contact us by email at thomasnthornton@gmail.com.
+If you require any more information or have any questions about our site's disclaimer, please feel free to contact us by email at [nate@strawberrysec.net](mailto:nate@strawberrysec.net).
 
 ## Disclaimers for StrawberrySec
 
