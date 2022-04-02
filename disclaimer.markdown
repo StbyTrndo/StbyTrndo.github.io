@@ -9,7 +9,7 @@ If you require any more information or have any questions about my site's discla
 
 ## Disclaimers for StrawberrySec
 
-All the information on this website - https://StrawberrySec.com - is published in good faith and for general information purpose only. StrawberrySec does not make any warranties about the completeness, reliability and accuracy of this information. Any action you take upon the information you find on this website (StrawberrySec), is strictly at your own risk. StrawberrySec will not be liable for any losses and/or damages in connection with the use of this website.
+All the information on this website - [StrawberrySec.net](/) - is published in good faith and for general information purpose only. StrawberrySec does not make any warranties about the completeness, reliability and accuracy of this information. Any action you take upon the information you find on this website (StrawberrySec), is strictly at your own risk. StrawberrySec will not be liable for any losses and/or damages in connection with the use of this website.
 
 ### External Links
 
