@@ -62,6 +62,10 @@ plugins:
 # CUSTOM ITEMS
 ###########################
 
+include: [
+  '_pages'
+]
+
 remote_theme: "mmistakes/minimal-mistakes@4.24.0" 
 timezone: America/Los_Angeles
 permalink: /:categories/:title/
