@@ -10,11 +10,11 @@ excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in
 
 
 hero_row:
-  - image_path: /assets/images/HolidayHack2021/kringlecon_2021_pic.jpg
+  - image_path: /assets/images/HackTheBox/Secret/Secret.png
     alt: "Hero Post"
-    title: "2021 SANS Holiday Hack Challenge"
-    excerpt: "A collection of all of the posts I made about the 2021 SANS Holiday Hack Challenge"
-    url: "/holidayhack2021/Summary/"
+    title: "Walkthrough: Secret - Hack The Box"
+    excerpt: "A walktrhough of 'Secret' from Hack The Box"
+    url: "/hackthebox/Secret"
     btn_label: "Read More"
     btn_class: "btn--primary"
 
