@@ -10,11 +10,11 @@ excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in
 
 
 hero_row:
-  - image_path: /assets/images/HackTheBox/Backdoor/Backdoor.png
-    alt: "Backdoor"
-    title: "Walkthrough: Backdoor - Hack The Box"
-    excerpt: "A walktrhough of 'Backdoor' from Hack The Box"
-    url: "/hackthebox/Backdoor"
+  - image_path: /assets/images/HackTheBox/Pandora/Pandora.png
+    alt: "Pandora"
+    title: "Walkthrough: Pandora - Hack The Box"
+    excerpt: "A walktrhough of Pandora from Hack The Box"
+    url: "/hackthebox/Pandora"
     btn_label: "Read More"
     btn_class: "btn--primary"
 
