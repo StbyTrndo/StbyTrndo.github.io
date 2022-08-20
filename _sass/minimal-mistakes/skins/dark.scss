@@ -19,12 +19,12 @@ $masthead-link-color-hover: mix(#000, $text-color, 20%) !default;
 $navicon-link-color-hover: mix(#000, $background-color, 30%) !default;
 
 /* contrast syntax highlighting (base16) */
-$base00: $code-background-color;
+$base00: $code-background-color; // background color
 $base01: #242422;
 $base02: #484844;
 $base03: #6c6c66;
-$base04: #918f88;
-$base05: #b5b3aa;
+$base04: #74726b; //comments
+$base05: $text-color; // text color
 $base06: #d9d7cc;
 $base07: #fdfbee;
 $base08: #ff6c60;
