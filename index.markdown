@@ -10,11 +10,11 @@ excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in
 
 
 hero_row:
-  - image_path: /assets/images/HackTheBox/Timelapse/Timelapse.png
-    alt: "Timelapse"
-    title: "Walkthrough: Timelapse - Hack The Box"
-    excerpt: "A walktrhough of Timelapse from Hack The Box"
-    url: "/hackthebox/Timelapse"
+  - image_path: /assets/images/HackTheBox/Trick/Trick.png
+    alt: "Trick"
+    title: "Walkthrough: Trick - Hack The Box"
+    excerpt: "A walktrhough of Trick from Hack The Box"
+    url: "/hackthebox/Trick"
     btn_label: "Read More"
     btn_class: "btn--primary"
 
@@ -48,5 +48,3 @@ feature_row:
 {% include feature_row id="hero_row" type="left" %}
 
 {% include feature_row %}
-
-test
