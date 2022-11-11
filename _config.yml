@@ -111,7 +111,7 @@ author:
       icon: "fas fa-envelope"
       url: "mailto:nate@strawberrysec.net"
     - label: "Mastodon"
-      icon: "fa-brands fa-mastodon"
+      icon: "fab fa-mastodon"
       url: "https://infosec.exchange/@NateT"
 
 footer:
