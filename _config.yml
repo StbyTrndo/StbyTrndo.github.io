@@ -110,6 +110,9 @@ author:
     - label: "Email"
       icon: "fas fa-envelope"
       url: "mailto:nate@strawberrysec.net"
+    - label: "Mastodon"
+      icon: "fa-brands fa-mastodon"
+      url: "https://infosec.exchange/@NateT"
 
 footer:
   links:
