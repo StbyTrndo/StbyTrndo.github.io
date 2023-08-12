@@ -14,7 +14,7 @@ hero_row:
     alt: "Precious"
     title: "Walkthrough: Precious - Hack The Box"
     excerpt: "A walktrhough of Precious from Hack The Box"
-    url: "/hackthebox/precious"
+    url: "/hackthebox/Precious"
     btn_label: "Read More"
     btn_class: "btn--primary"
 
