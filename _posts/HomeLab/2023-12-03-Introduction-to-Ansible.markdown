@@ -1,6 +1,6 @@
 ---
 title:  "Introduction to Ansible"
-date:   "2023-11-25 00:00:00 -0800"
+date:   "2023-12-03 00:00:00 -0800"
 categories: HomeLab
 header:
  teaser: /assets/images/HomeLab/Ansible_Header.png
