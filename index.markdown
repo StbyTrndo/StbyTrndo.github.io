@@ -10,11 +10,11 @@ excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in
 
 
 hero_row:
-  - image_path: /assets/images/HackTheBox/Precious/Precious.png
-    alt: "Precious"
-    title: "Walkthrough: Precious - Hack The Box"
-    excerpt: "A walktrhough of Precious from Hack The Box"
-    url: "/hackthebox/Precious"
+  - image_path: /assets/images/HomeLab/Ansible_Header.png
+    alt: "Ansible"
+    title: "Introduction to Ansible"
+    excerpt: "My journey in using ansible to keep my home network up to date"
+    url: "/homelab/Introduction-to-Ansible"
     btn_label: "Read More"
     btn_class: "btn--primary"
 
