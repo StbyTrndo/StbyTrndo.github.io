@@ -6,7 +6,7 @@ header:
   overlay_color: "#000"
   overlay_filter: "0.8"
   overlay_image: /assets/images/strawberry_background_1920_1080.png
-excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in general. Join me on my dive into the technical side of computing!"
+excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in general. The goal of this blog is to document things that I am doing outside of my normal work to continue my education and increase my skills in the hope that others will find my experiences to be useful."
 
 
 hero_row:
@@ -24,7 +24,7 @@ feature_row:
   - image_path:
     alt: "Recent Posts"
     title: "Recent Posts"
-    excerpt: "View the most recent posts on this site."
+    excerpt: "View the most recent posts on this site"
     url: "/recent-posts"
     btn_label: "See Recent Posts"
     btn_class: "btn--primary"
@@ -32,16 +32,16 @@ feature_row:
   - image_path: 
     alt: "Categories"
     title: "Categories"
-    excerpt: "Browse by Category"
+    excerpt: "Browse by category"
     url: "/categories"
-    btn_label: "Read More"
+    btn_label: "Check out Categories"
     btn_class: "btn--primary"
 
   - image_path:
     title: "About"
     excerpt: "More about the author"
     url: "/about"
-    btn_label: "Read More"
+    btn_label: "Learn More About Me"
     btn_class: "btn--primary"
 ---
 
