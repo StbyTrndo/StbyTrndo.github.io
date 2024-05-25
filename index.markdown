@@ -10,11 +10,11 @@ excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in
 
 
 hero_row:
-  - image_path: /assets/images/HomeLab/Ansible_Header.png
-    alt: "Ansible"
-    title: "Introduction to Ansible"
-    excerpt: "My journey in using ansible to keep my home network up to date"
-    url: "/homelab/Introduction-to-Ansible"
+  - image_path: /assets/images/Communications/DontPanicTitle.png
+    alt: "Don't Panic title card"
+    title: "DON'T PANIC! An IR Guide to Communicating with Execs"
+    excerpt: "This article summarizes a talk some colleagues and I gave at CactusCon 12"
+    url: "/communications/DONT-PANIC-An-IR-Guide-to-Communicating-with-Execs"
     btn_label: "Read More"
     btn_class: "btn--primary"
 
