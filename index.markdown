@@ -5,7 +5,7 @@ date: 2016-03-23T11:48:41-04:00
 header:
   overlay_color: "#000"
   overlay_filter: "0.8"
-  overlay_image: /assets/images/strawberry_background_1920_1080.png
+  overlay_image: /assets/images/php_code_teaser.jpg
 excerpt: "Welcome to StrawberrySec! This is a blog about cybersecurity and IT in general. The goal of this blog is to document things that I am doing outside of my normal work to continue my education and increase my skills in the hope that others will find my experiences to be useful."
 
 
