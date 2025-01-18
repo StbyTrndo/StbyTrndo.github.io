@@ -10,11 +10,11 @@ excerpt: "This is a blog about cybersecurity and IT in general. The goal of this
 
 
 hero_row:
-  - image_path: /assets/images/homelab/Pixel_Floorplan_Thumbnail.JPEG
+  - image_path: /assets/images/homelab/Pixel_Floorplan/Pixel_Floorplan_Thumbnail.JPEG
     alt: "Pixel Art Floorplan"
     title:  "How to Make a Home Assistant Floorplan Dashboard with Pixel Art and Animated Lighting"
     excerpt: "This article describes how to make a pixel art floorplan dashboard in Home Assistant"
-    url: "/HomeLab/Home-Assistant-Pixel-Floorplan"
+    url: "/homelab/Home-Assistant-Pixel-Floorplan"
     btn_label: "Read More"
     btn_class: "btn--primary"
 
