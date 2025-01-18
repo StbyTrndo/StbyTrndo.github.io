@@ -10,11 +10,11 @@ excerpt: "This is a blog about cybersecurity and IT in general. The goal of this
 
 
 hero_row:
-  - image_path: /assets/images/Communications/DontPanicTitle.png
-    alt: "Don't Panic title card"
-    title: "DON'T PANIC! An IR Guide to Communicating with Execs"
-    excerpt: "This article summarizes a talk some colleagues and I gave at CactusCon 12"
-    url: "/communications/DONT-PANIC-An-IR-Guide-to-Communicating-with-Execs"
+  - image_path: /assets/images/HomeLab/Pixel_Floorplan/Pixel_Floorplan_Thumbnail.JPEG
+    alt: "Pixel Art Floorplan"
+    title:  "How to Make a Home Assistant Floorplan Dashboard with Pixel Art and Animated Lighting"
+    excerpt: "This article describes how to make a pixel art floorplan dashboard in Home Assistant"
+    url: "/HomeLab/Home-Assistant-Pixel-Floorplan"
     btn_label: "Read More"
     btn_class: "btn--primary"
 
