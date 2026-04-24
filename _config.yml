@@ -96,7 +96,7 @@ defaults:
 author:
   name     : "Nate Thornton"
   avatar   : "/assets/images/bio-photo-small.jpg"
-  bio      : "[I'm a Security Operations Center Manager working in the financial industry and I'm working on developing my technical skills to increase my understanding of cybersecurity concepts. If you run into any inaccuracies or omissions on the site, please feel free to contact me at one of the links below.](/about)"
+  bio      : "[Cybersecurity leader running the SOC function for the Americas at a global tier-1 bank. Currently re-architecting the program around AI so the function can scale globally and writing about what I'm learning along the way.](/about)"
   links:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
