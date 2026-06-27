@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Space-Filling Curve Background Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <aside class="controls">
+      <header class="title">
+        <h1>Space-Filling Curve</h1>
+        <p class="subtitle">Background Generator</p>
+      </header>
+
+      <label class="row">
+        <span>Curve</span>
+        <select id="curve">
+          <option value="hilbert">Hilbert</option>
+          <option value="peano">Peano</option>
+          <option value="gosper">Gosper (flowsnake)</option>
+          <option value="morton">Morton (Z-order)</option>
+        </select>
+      </label>
+
+      <div class="slider" data-fmt="int">
+        <div class="slider-head"><span class="slider-name">Order</span><span class="slider-val" id="order-val"></span></div>
+        <input type="range" id="order" min="1" max="10" step="1" value="5" />
+      </div>
+
+      <div class="slider" data-fmt="int">
+        <div class="slider-head"><span class="slider-name">Image size (px)</span><span class="slider-val" id="size-val"></span></div>
+        <input type="range" id="size" min="128" max="6016" step="16" value="2048" />
+      </div>
+
+      <div class="slider" data-fmt="float">
+        <div class="slider-head"><span class="slider-name" id="thickness-name">Line thickness (px)</span><span class="slider-val" id="thickness-val"></span></div>
+        <input type="range" id="thickness" min="1" max="50" step="0.5" value="6" />
+      </div>
+
+      <label class="row">
+        <span>Thickness mode</span>
+        <select id="mode">
+          <option value="uniform">Uniform</option>
+          <option value="distance">Distance from point</option>
+        </select>
+      </label>
+
+      <div class="slider" data-fmt="float">
+        <div class="slider-head"><span class="slider-name">Min thickness (px)</span><span class="slider-val" id="thickness-min-val"></span></div>
+        <input type="range" id="thickness-min" min="1" max="50" step="0.5" value="1" />
+      </div>
+
+      <label class="row">
+        <span>Falloff</span>
+        <select id="falloff">
+          <option value="linear">Linear</option>
+          <option value="ease-in">Ease in</option>
+          <option value="ease-out">Ease out</option>
+          <option value="smoothstep">Smoothstep</option>
+          <option value="sqrt">Square root</option>
+          <option value="exponential">Exponential</option>
+          <option value="logarithmic">Logarithmic</option>
+        </select>
+      </label>
+
+      <p class="hint" id="focus-hint">Click the preview to set the focal point.</p>
+
+      <div class="slider" data-fmt="float">
+        <div class="slider-head"><span class="slider-name">Corner radius (px)</span><span class="slider-val" id="radius-val"></span></div>
+        <input type="range" id="radius" min="0" max="50" step="0.5" value="0" />
+      </div>
+
+      <hr />
+
+      <label class="row swatch-row">
+        <span>Curve color</span>
+        <input type="color" id="curve-color" value="#2846a0" />
+      </label>
+
+      <label class="check-row">
+        <input type="checkbox" id="gradient" />
+        <span>Gradient along curve</span>
+      </label>
+
+      <label class="row swatch-row">
+        <span>Gradient end color</span>
+        <input type="color" id="curve-color2" value="#c83c78" />
+      </label>
+
+      <label class="row swatch-row">
+        <span>Background color</span>
+        <input type="color" id="bg-color" value="#f5f5f8" />
+      </label>
+
+      <hr />
+
+      <div class="actions">
+        <button id="animate" type="button">Animate</button>
+        <span class="save-group">
+          <select id="format">
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WebP</option>
+            <option value="bmp">BMP</option>
+          </select>
+          <button id="save" type="button">Save image…</button>
+        </span>
+      </div>
+    </aside>
+
+    <section class="preview-pane">
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="preview"></canvas>
+      </div>
+      <p class="status" id="status"></p>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

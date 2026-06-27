@@ -10,12 +10,12 @@ excerpt: "This is a blog about cybersecurity and IT in general. The goal of this
 
 
 hero_row:
-  - image_path: /assets/images/Communications/DontPanicTitle.png
-    alt: "Pixel Art Floorplan"
-    title:  "DON'T PANIC! An IR Guide to Communicating with Execs"
-    excerpt: "This article describes how to make a pixel art floorplan dashboard in Home Assistant"
-    url: "/communications/DONT-PANIC-An-IR-Guide-to-Communicating-with-Execs/"
-    btn_label: "Read More"
+  - image_path: /assets/images/space-filling-curves/gosper_order3.png
+    alt: "An image of a Gosper curve with the line in green and a black background"
+    title:  "Space-Filling Curve Generator"
+    excerpt: "This is a small application that generates images using space-filling curves."
+    url: "/_pages/space-filling-curves/curves.html"
+    btn_label: "Try it out"
     btn_class: "btn--primary"
 
 
